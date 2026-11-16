@@ -1,6 +1,6 @@
 # @inid/server
 
-Sign-in with [InID](https://inid.co) for any server that speaks the web's `Request` and `Response`: Hono, Remix and React Router, Nuxt, Bun, Deno, Cloudflare Workers — and Express. People sign in with their phone (a code by WhatsApp or SMS), Face ID, their fingerprint or Google, without passwords; your server knows who they are, their role and their permissions.
+Sign-in with [InID](https://inid.co) for any server that speaks the web's `Request` and `Response`: Hono, Remix and React Router, Nuxt, Bun, Deno, Cloudflare Workers — and Express. People sign in with their phone (a code by WhatsApp or SMS), a passkey (Face ID, fingerprint, Windows Hello or the device PIN) or Google, without passwords; your server knows who they are, their role and their permissions.
 
 For **Next.js** use [`@inid/nextjs`](https://www.npmjs.com/package/@inid/nextjs), for **Astro** [`@inid/astro`](https://www.npmjs.com/package/@inid/astro), for **SvelteKit** [`@inid/sveltekit`](https://www.npmjs.com/package/@inid/sveltekit). They're built on this package.
 

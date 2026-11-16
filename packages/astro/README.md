@@ -1,6 +1,6 @@
 # @inid/astro
 
-Sign-in with [InID](https://inid.co) for Astro. People sign in with their phone (a code by WhatsApp or SMS), Face ID, their fingerprint or Google, without passwords, in a form that lives inside your page. Your pages know who they are, their role and their permissions.
+Sign-in with [InID](https://inid.co) for Astro. People sign in with their phone (a code by WhatsApp or SMS), a passkey (Face ID, fingerprint, Windows Hello or the device PIN) or Google, without passwords, in a form that lives inside your page. Your pages know who they are, their role and their permissions.
 
 ```bash
 npm install @inid/astro @inid/js

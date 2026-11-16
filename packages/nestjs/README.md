@@ -1,6 +1,6 @@
 # @inid/nestjs
 
-Sign-in with [InID](https://inid.co) for NestJS (Express or Fastify). People sign in with their phone (a code by WhatsApp or SMS), Face ID, their fingerprint or Google, without passwords. Your controllers know who they are, their roles and their permissions, from the session cookie of your web app or from the ID token your mobile app sends.
+Sign-in with [InID](https://inid.co) for NestJS (Express or Fastify). People sign in with their phone (a code by WhatsApp or SMS), a passkey (Face ID, fingerprint, Windows Hello or the device PIN) or Google, without passwords. Your controllers know who they are, their roles and their permissions, from the session cookie of your web app or from the ID token your mobile app sends.
 
 ```bash
 npm install @inid/nestjs

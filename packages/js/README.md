@@ -1,6 +1,6 @@
 # @inid/js
 
-Sign-in with [InID](https://inid.co) for any page, no framework: custom elements and a few functions for Astro, Svelte, Vue, Solid or plain HTML. People sign in with Face ID, their fingerprint or a code to their phone — no passwords.
+Sign-in with [InID](https://inid.co) for any page, no framework: custom elements and a few functions for Astro, Svelte, Vue, Solid or plain HTML. People sign in with a passkey (Face ID, fingerprint, Windows Hello or the device PIN) or a code to their phone — no passwords.
 
 ```bash
 npm install @inid/js
@@ -42,11 +42,11 @@ Every element also takes `api-path` and `locale` (`es`, `en` or `pt`); left out,
 
 | Element | Attributes | |
 |---|---|---|
-| `<inid-sign-in>` | `app-name`, `return-to`, `entrance`, `redirect` | The sign-in itself, in your page: phone, code, Face ID or fingerprint, and Google (which opens in the whole window). It is InID's form in a frame, so passkeys and codes never touch your app. Once signed in, it says who. `redirect` shows a single button to InID's page instead |
+| `<inid-sign-in>` | `app-name`, `return-to`, `entrance`, `redirect` | The sign-in itself, in your page: phone, code, passkey and Google (which opens in the whole window). It is InID's form in a frame, so passkeys and codes never touch your app. Once signed in, it says who. `redirect` shows a single button to InID's page instead |
 | `<inid-sign-in-button>` | `return-to`, `entrance` | A button to sign in; its children are the label |
 | `<inid-sign-out-button>` | `return-to` (default `/`) | A button to sign out; its children are the label |
 | `<inid-user-button>` | `show-name`, `sign-out-return-to` | Initials and a menu: their sessions, manage their InID, sign out |
-| `<inid-user-profile>` | | The person's page in your app: their InID account (data, Face ID) in a frame your app can't read, and their sessions |
+| `<inid-user-profile>` | | The person's page in your app: their InID account (data, passkeys) in a frame your app can't read, and their sessions |
 | `<inid-user-sessions>` | | The person's sessions at your app, the current one marked; they end the others |
 | `<inid-signed-in>`, `<inid-signed-out>` | | Shows its children only then |
 | `<inid-protect>` | `role`, `permission` | Shows its children only to someone with that role or permission; to anyone else, the children with `slot="fallback"`. It hides; check on your server too |

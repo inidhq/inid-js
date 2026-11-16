@@ -1,6 +1,6 @@
 # @inid/expo
 
-Sign-in with [InID](https://inid.co) for React Native and Expo: `<InIDProvider>`, `useInID()`, `<SignInButton />` and friends. People sign in with Face ID, their fingerprint or a code to their phone — no passwords.
+Sign-in with [InID](https://inid.co) for React Native and Expo: `<InIDProvider>`, `useInID()`, `<SignInButton />` and friends. People sign in with a passkey (Face ID, fingerprint, Windows Hello or the device PIN) or a code to their phone — no passwords.
 
 Your app is a **public client** (RFC 8252): it holds only your publishable key, never a secret. Signing in opens InID in the system's secure browser (ASWebAuthenticationSession on iOS, Chrome Custom Tabs on Android — never a WebView) with PKCE, comes back to your app's own scheme, and keeps the tokens in the Keychain / Keystore.
 

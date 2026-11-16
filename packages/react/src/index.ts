@@ -35,7 +35,7 @@ const TEXTS = {
     continue: "Continuar con InID",
     title: "Entra a {app}",
     titlePlain: "Entra",
-    lead: "Con Face ID, tu huella o un código a tu celular. Sin contraseñas.",
+    lead: "Con una passkey o un código a tu celular. Sin contraseñas.",
     signedInAs: "Entraste como {name}",
     manage: "Gestionar mi InID",
     signOut: "Salir",
@@ -44,7 +44,7 @@ const TEXTS = {
     sessions: "Tus sesiones",
     sessionsLead: "Donde entraste a esta app. Cierra las que no reconozcas.",
     profile: "Tu cuenta",
-    profileLead: "Tus datos y tu Face ID son de tu InID: cámbialos aquí y llegan a cada app que autorizaste.",
+    profileLead: "Tus datos y tus passkeys son de tu InID: cámbialos aquí y llegan a cada app que autorizaste.",
     thisOne: "Esta sesión",
     end: "Cerrar",
     endOthers: "Cerrar las demás",
@@ -59,7 +59,7 @@ const TEXTS = {
     continue: "Continue with InID",
     title: "Sign in to {app}",
     titlePlain: "Sign in",
-    lead: "With Face ID, your fingerprint or a code to your phone. No passwords.",
+    lead: "With a passkey or a code to your phone. No passwords.",
     signedInAs: "Signed in as {name}",
     manage: "Manage my InID",
     signOut: "Sign out",
@@ -67,7 +67,7 @@ const TEXTS = {
     secured: "Secured by InID",
     sessions: "Your sessions",
     profile: "Your account",
-    profileLead: "Your data and Face ID belong to your InID: change them here and every app you authorized gets them.",
+    profileLead: "Your data and passkeys belong to your InID: change them here and every app you authorized gets them.",
     sessionsLead: "Where you signed in to this app. End the ones you don't recognize.",
     thisOne: "This session",
     end: "End",
@@ -83,7 +83,7 @@ const TEXTS = {
     continue: "Continuar com InID",
     title: "Entre em {app}",
     titlePlain: "Entre",
-    lead: "Com Face ID, sua digital ou um código no seu celular. Sem senhas.",
+    lead: "Com uma passkey ou um código no seu celular. Sem senhas.",
     signedInAs: "Você entrou como {name}",
     manage: "Gerenciar meu InID",
     signOut: "Sair",
@@ -91,7 +91,7 @@ const TEXTS = {
     secured: "Protegido por InID",
     sessions: "Suas sessões",
     profile: "Sua conta",
-    profileLead: "Seus dados e seu Face ID são do seu InID: mude-os aqui e cada app que você autorizou os recebe.",
+    profileLead: "Seus dados e suas passkeys são do seu InID: mude-os aqui e cada app que você autorizou os recebe.",
     sessionsLead: "Onde você entrou neste app. Encerre as que não reconhecer.",
     thisOne: "Esta sessão",
     end: "Encerrar",
@@ -291,7 +291,7 @@ export function SignOutButton({ children, returnTo, className }: { children?: Re
 }
 
 // ---------- the sign-in card ----------
-// InID's own form, inside the app's page: the phone, the code, Face ID or the fingerprint,
+// InID's own form, inside the app's page: the phone, the code, the passkey,
 // and Google (which opens in the whole window: Google can't be shown inside another site).
 // It's InID's page in a frame, so passkeys, codes and InID's cookies never touch the app.
 // redirect: a single button to InID's page instead. entrance: a door of the app with its own
@@ -385,8 +385,8 @@ export function UserSessions() {
 }
 
 // ---------- the person's own page in the app ----------
-// Their account (InID's own page, in a frame the app can't read: their data, Face ID, the
-// apps they authorized; changing data asks them for a code or Face ID) and their sessions
+// Their account (InID's own page, in a frame the app can't read: their data, passkeys, the
+// apps they authorized; changing data asks them for a code or a passkey) and their sessions
 // at this app. What they change reaches the app with its next session (or user.updated).
 export function UserProfile({ className }: { className?: string }) {
   const { isSignedIn, accountUrl, reload, t } = useInID("<UserProfile>");

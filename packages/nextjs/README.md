@@ -1,6 +1,6 @@
 # @inid/nextjs
 
-Sign-in with [InID](https://inid.co) for Next.js (14, 15 and 16, App Router). People sign in with Face ID, their fingerprint or a code to their phone — no passwords — and arrive with a verified phone, a confirmed email and their name.
+Sign-in with [InID](https://inid.co) for Next.js (14, 15 and 16, App Router). People sign in with a passkey (Face ID, fingerprint, Windows Hello or the device PIN) or a code to their phone — no passwords — and arrive with a verified phone, a confirmed email and their name.
 
 ```bash
 npm install @inid/nextjs
@@ -73,7 +73,7 @@ const { isSignedIn, user } = await auth();
 
 | | |
 |---|---|
-| `<SignIn appName="My App" />` | The sign-in itself, in your page: phone, code, Face ID or fingerprint, and Google (which opens in the whole window). It is InID's form in a frame, so passkeys and codes never touch your app. `redirect` shows a single button to InID's page instead |
+| `<SignIn appName="My App" />` | The sign-in itself, in your page: phone, code, passkey and Google (which opens in the whole window). It is InID's form in a frame, so passkeys and codes never touch your app. `redirect` shows a single button to InID's page instead |
 | `<SignInButton />`, `<SignOutButton />` | A button, or wrap your own: `<SignInButton><button>Sign in</button></SignInButton>` |
 | `<UserButton />` | The person's initials, with a menu: manage their InID, sign out |
 | `<SignedIn>`, `<SignedOut>` | Shows its children only then |
@@ -126,7 +126,7 @@ From your server: `PUT https://id.inid.co/v1/users/{id}/role` with your secret k
 
 ## The person's profile
 
-`<UserProfile />` is their page in your app: **Your account** (their InID inside your page: their data, Face ID and the apps they authorized; changing data asks for a code or Face ID) and **Sessions**. The account part is InID's own page in a frame your app can't read, and only your sites may show it. What they change reaches your app with their next session (and the `user.updated` webhook).
+`<UserProfile />` is their page in your app: **Your account** (their InID inside your page: their data, passkeys and the apps they authorized; changing data asks for a code or their passkey) and **Sessions**. The account part is InID's own page in a frame your app can't read, and only your sites may show it. What they change reaches your app with their next session (and the `user.updated` webhook).
 
 ```tsx
 // app/profile/page.tsx (protect it in proxy.ts)
