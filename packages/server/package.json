@@ -1,0 +1,20 @@
+{
+  "name": "@inid/server",
+  "version": "0.1.0",
+  "description": "Sign-in with InID for any server with web Requests and Responses (Astro, SvelteKit, Remix, React Router, Hono, Nuxt, Bun, Deno) and Express: the sign-in routes, a fresh session, and paths protected by role or permission.",
+  "license": "MIT",
+  "homepage": "https://inid.co/docs/frameworks/",
+  "keywords": ["inid", "auth", "authentication", "sign-in", "oidc", "passkeys", "hono", "remix", "express"],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" },
+    "./express": { "types": "./dist/express.d.ts", "import": "./dist/express.js" }
+  },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "rm -rf dist && ../../node_modules/.bin/esbuild src/index.ts src/express.ts --bundle --format=esm --platform=neutral --target=es2020 --external:node:* --outdir=dist && ../../node_modules/.bin/tsc src/index.ts src/express.ts --declaration --emitDeclarationOnly --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck --types node",
+    "prepublishOnly": "pnpm build"
+  },
+  "publishConfig": { "access": "public" }
+}

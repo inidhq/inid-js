@@ -1,0 +1,230 @@
+// @vitest-environment happy-dom
+// @vitest-environment-options {"settings":{"disableIframePageLoading":true}}
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { configure, getUser, has, signIn, signOut, type InIDUser } from "../src/index.js";
+
+const ana: InIDUser = {
+  id: "u1",
+  firstName: "Ana",
+  lastName: "Pérez",
+  name: "Ana Pérez",
+  email: "ana@example.com",
+  emailVerified: true,
+  phone: null,
+  roles: ["admin"],
+  permissions: ["invoices:read"],
+  publicMetadata: {},
+};
+
+// The session store is shared per apiPath, and custom elements stay registered: every test
+// gets an apiPath of its own so nothing leaks between them.
+let api = "";
+let n = 0;
+const fetchMock = vi.fn();
+const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json" } });
+const serve = (user: InIDUser | null) =>
+  fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+    if (url === `${api}/session`) return json({ user, accountUrl: "https://id.example/account" });
+    if (url === `${api}/signout` && init?.method === "POST") return new Response(null, { status: 204 });
+    if (url === `${api}/sessions`) return json({ sessions: [] });
+    return new Response("not found", { status: 404 });
+  });
+const settle = async () => {
+  for (let i = 0; i < 5; i++) await new Promise((r) => setTimeout(r, 0));
+};
+const mount = (html: string) => {
+  document.body.innerHTML = html;
+  return document.body.firstElementChild as HTMLElement;
+};
+const shown = (element: Element) => Boolean(element.shadowRoot!.querySelector("slot:not([name])"));
+const assign = () => vi.spyOn(window.location, "assign").mockImplementation(() => {});
+
+beforeEach(() => {
+  api = `/api/t${++n}`;
+  configure({ apiPath: api, locale: "es" });
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+  history.replaceState(null, "", "/shop/cart?x=1");
+});
+afterEach(() => {
+  document.body.innerHTML = "";
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
+
+describe("<inid-sign-in>", () => {
+  // happy-dom is told not to load frames, and says so on the console
+  beforeEach(() => void vi.spyOn(console, "error").mockImplementation(() => {}));
+  const frameSrc = (element: Element) => new URL(element.shadowRoot!.querySelector("iframe")!.getAttribute("src")!, location.origin);
+
+  it("frames InID's embedded form with the page, return_to, locale and entrance", async () => {
+    serve(null);
+    const element = mount(`<inid-sign-in app-name="Mi App" entrance="team" locale="en"></inid-sign-in>`);
+    const frame = element.shadowRoot!.querySelector("iframe")!;
+    expect(frame.getAttribute("allow")).toBe("publickey-credentials-get *; publickey-credentials-create *");
+    expect(frame.getAttribute("scrolling")).toBe("no");
+    expect(frame.getAttribute("title")).toBe("Sign in to Mi App");
+    const src = frameSrc(element);
+    expect(src.pathname).toBe(`${api}/signin`);
+    expect(Object.fromEntries(src.searchParams)).toEqual({ display: "embed", return_to: "/shop/cart?x=1", page: "/shop/cart?x=1", ui_locales: "en", entrance: "team" });
+    await settle();
+    expect(element.shadowRoot!.querySelector("iframe")).toBe(frame);
+  });
+
+  it("uses return-to and the configured locale", () => {
+    serve(null);
+    const src = frameSrc(mount(`<inid-sign-in return-to="/welcome"></inid-sign-in>`));
+    expect(src.searchParams.get("return_to")).toBe("/welcome");
+    expect(src.searchParams.get("ui_locales")).toBe("es");
+    expect(src.searchParams.has("entrance")).toBe(false);
+  });
+
+  it("goes on after Google with inid_continue, and takes it out of the address", () => {
+    serve(null);
+    history.replaceState(null, "", "/login?a=1&inid_continue=abc123#top");
+    const replace = vi.spyOn(history, "replaceState");
+    const src = frameSrc(mount(`<inid-sign-in></inid-sign-in>`));
+    expect(Object.fromEntries(src.searchParams)).toEqual({ display: "embed", continue: "abc123" });
+    expect(replace).toHaveBeenCalledWith(history.state, "", "/login?a=1#top");
+    expect(location.search).toBe("?a=1");
+  });
+
+  it("takes its height only from its own frame, within range", () => {
+    serve(null);
+    const element = mount(`<inid-sign-in></inid-sign-in>`);
+    const frame = element.shadowRoot!.querySelector("iframe")!;
+    // Frames aren't loaded here: the frame's window is a stand-in
+    const own = {} as Window;
+    Object.defineProperty(frame, "contentWindow", { value: own });
+    const send = (data: unknown, source: Window | null) => window.dispatchEvent(new MessageEvent("message", { data, source }));
+    expect(frame.style.height).toBe("280px");
+    send({ type: "inid:height", height: 420.2 }, own);
+    expect(frame.style.height).toBe("421px");
+    send({ type: "inid:height", height: 999 }, window);
+    send({ type: "inid:height", height: 999 }, null);
+    send({ type: "inid:height", height: 5000 }, own);
+    send({ type: "inid:height", height: -3 }, own);
+    send({ type: "other", height: 300 }, own);
+    expect(frame.style.height).toBe("421px");
+  });
+
+  it("says who is signed in instead of the form", async () => {
+    serve(ana);
+    const element = mount(`<inid-sign-in></inid-sign-in>`);
+    await settle();
+    expect(element.shadowRoot!.querySelector("iframe")).toBeNull();
+    expect(element.shadowRoot!.textContent).toContain("Entraste como Ana Pérez");
+  });
+
+  it("redirect: a single button to InID's page", async () => {
+    serve(null);
+    const go = assign();
+    const element = mount(`<inid-sign-in redirect entrance="team"></inid-sign-in>`);
+    await settle();
+    expect(element.shadowRoot!.querySelector("iframe")).toBeNull();
+    element.shadowRoot!.querySelector("button")!.click();
+    expect(go).toHaveBeenCalledWith(`${api}/signin?return_to=%2Fshop%2Fcart%3Fx%3D1&ui_locales=es&entrance=team`);
+  });
+});
+
+describe("the session", () => {
+  it("is fetched once for every element and getUser()", async () => {
+    serve(ana);
+    const seen: unknown[] = [];
+    document.addEventListener("inid:user", (e) => seen.push((e as CustomEvent).detail.user), { once: true });
+    mount(`<div><inid-signed-in>a</inid-signed-in><inid-signed-out>b</inid-signed-out><inid-user-button></inid-user-button><inid-protect role="admin">c</inid-protect></div>`);
+    expect(await getUser()).toEqual(ana);
+    await settle();
+    expect(fetchMock.mock.calls.filter(([url]) => url === `${api}/session`)).toHaveLength(1);
+    expect(seen).toEqual([ana]);
+  });
+
+  it("shows signed-in, signed-out and protect by who is here", async () => {
+    serve(ana);
+    mount(
+      `<div><inid-signed-in id="in">in</inid-signed-in><inid-signed-out id="out">out</inid-signed-out><inid-protect id="admin" role="admin">x</inid-protect><inid-protect id="owner" role="owner"><span slot="fallback">no</span></inid-protect><inid-protect id="perm" permission="invoices:read">y</inid-protect></div>`
+    );
+    const get = (id: string) => document.getElementById(id)!;
+    // Nothing shows until the server answers
+    expect(["in", "out", "admin", "owner"].map((id) => shown(get(id)))).toEqual([false, false, false, false]);
+    await settle();
+    expect(shown(get("in"))).toBe(true);
+    expect(shown(get("out"))).toBe(false);
+    expect(shown(get("admin"))).toBe(true);
+    expect(shown(get("perm"))).toBe(true);
+    expect(shown(get("owner"))).toBe(false);
+    expect(get("owner").shadowRoot!.querySelector("slot[name=fallback]")).not.toBeNull();
+  });
+
+  it("shows signed-out to nobody signed in, and when the server fails", async () => {
+    fetchMock.mockRejectedValue(new Error("offline"));
+    const element = mount(`<inid-signed-out>hi</inid-signed-out>`);
+    await settle();
+    expect(shown(element)).toBe(true);
+    expect(await getUser()).toBeNull();
+  });
+
+  it("has() checks roles and permissions", () => {
+    expect(has(ana, { role: "admin" })).toBe(true);
+    expect(has(ana, { role: "admin", permission: "invoices:write" })).toBe(false);
+    expect(has(null, {})).toBe(false);
+    expect(has(ana, {})).toBe(true);
+  });
+});
+
+describe("signing in and out", () => {
+  it("signIn() goes to the app's signin route", () => {
+    const go = assign();
+    signIn("/after", "team");
+    expect(go).toHaveBeenCalledWith(`${api}/signin?return_to=%2Fafter&ui_locales=es&entrance=team`);
+  });
+
+  it("signOut() posts, forgets the person, then navigates", async () => {
+    serve(ana);
+    const go = assign();
+    const element = mount(`<inid-signed-in>in</inid-signed-in>`);
+    await settle();
+    expect(shown(element)).toBe(true);
+    await signOut("/bye");
+    expect(fetchMock).toHaveBeenCalledWith(`${api}/signout`, { method: "POST", credentials: "same-origin" });
+    expect(shown(element)).toBe(false);
+    expect(go).toHaveBeenCalledWith("/bye");
+    const posted = fetchMock.mock.invocationCallOrder[fetchMock.mock.calls.findIndex(([url]) => url === `${api}/signout`)];
+    expect(posted).toBeLessThan(go.mock.invocationCallOrder[0]);
+  });
+
+  it("<inid-sign-out-button> signs out and goes to return-to", async () => {
+    serve(ana);
+    const go = assign();
+    const element = mount(`<inid-sign-out-button return-to="/home"></inid-sign-out-button>`);
+    expect(element.shadowRoot!.querySelector("slot")!.textContent).toBe("Salir");
+    element.shadowRoot!.querySelector("button")!.click();
+    await settle();
+    expect(fetchMock).toHaveBeenCalledWith(`${api}/signout`, expect.objectContaining({ method: "POST" }));
+    expect(go).toHaveBeenCalledWith("/home");
+  });
+
+  it("<inid-sign-in-button> has a localized label and its own api-path", () => {
+    const go = assign();
+    const element = mount(`<inid-sign-in-button api-path="/auth" locale="pt" return-to="/x"></inid-sign-in-button>`);
+    expect(element.shadowRoot!.querySelector("slot")!.textContent).toBe("Continuar com InID");
+    element.shadowRoot!.querySelector("button")!.click();
+    expect(go).toHaveBeenCalledWith("/auth/signin?return_to=%2Fx&ui_locales=pt");
+  });
+});
+
+describe("<inid-user-button>", () => {
+  it("shows the initials and a menu with the person", async () => {
+    serve(ana);
+    const element = mount(`<inid-user-button show-name></inid-user-button>`);
+    await settle();
+    const button = element.shadowRoot!.querySelector<HTMLButtonElement>(".inid-avatar-btn")!;
+    expect(button.textContent).toBe("APAna");
+    button.click();
+    const menu = element.shadowRoot!.querySelector("[role=menu]")!;
+    expect(menu.textContent).toContain("ana@example.com");
+    expect(menu.querySelector("a")!.getAttribute("href")).toBe("https://id.example/account");
+    document.dispatchEvent(new MouseEvent("mousedown", { bubbles: true }));
+    expect(element.shadowRoot!.querySelector("[role=menu]")).toBeNull();
+  });
+});

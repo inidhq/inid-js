@@ -1,0 +1,43 @@
+{
+  "name": "@inid/react",
+  "version": "0.1.2",
+  "description": "Sign-in with InID for React: <SignIn />, <UserButton />, useUser() and friends. Talks to your server's InID routes (see @inid/nextjs).",
+  "license": "MIT",
+  "homepage": "https://inid.co/docs/nextjs/",
+  "keywords": [
+    "inid",
+    "auth",
+    "authentication",
+    "sign-in",
+    "react",
+    "passkeys",
+    "oidc"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && ../../node_modules/.bin/esbuild src/index.ts --bundle --format=esm --platform=neutral --target=es2020 --external:react --outfile=dist/index.js && ../../node_modules/.bin/tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck --jsx react-jsx",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

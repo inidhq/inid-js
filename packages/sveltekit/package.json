@@ -1,0 +1,20 @@
+{
+  "name": "@inid/sveltekit",
+  "version": "0.1.0",
+  "description": "Sign-in with InID for SvelteKit: a handle hook for the sign-in routes, a fresh session, paths protected by role or permission, and event.locals.inid. Components from @inid/js.",
+  "license": "MIT",
+  "homepage": "https://inid.co/docs/frameworks/",
+  "keywords": ["inid", "auth", "authentication", "sign-in", "oidc", "passkeys", "sveltekit", "svelte"],
+  "type": "module",
+  "sideEffects": false,
+  "exports": { ".": { "types": "./dist/index.d.ts", "import": "./dist/index.js" } },
+  "files": ["dist", "README.md", "LICENSE"],
+  "scripts": {
+    "build": "rm -rf dist && ../../node_modules/.bin/esbuild src/index.ts --bundle --format=esm --platform=neutral --target=es2020 --external:@inid/server --outdir=dist && ../../node_modules/.bin/tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": { "@inid/server": "workspace:^" },
+  "peerDependencies": { "@sveltejs/kit": ">=2" },
+  "peerDependenciesMeta": { "@sveltejs/kit": { "optional": true } },
+  "publishConfig": { "access": "public" }
+}

@@ -1,0 +1,60 @@
+{
+  "name": "@inid/expo",
+  "version": "0.1.0",
+  "description": "Sign-in with InID for React Native and Expo: <InIDProvider>, useInID(), <SignInButton> and friends. A public client with PKCE, the system's secure browser and tokens in the Keychain/Keystore.",
+  "license": "MIT",
+  "homepage": "https://inid.co/docs/",
+  "keywords": [
+    "inid",
+    "auth",
+    "authentication",
+    "sign-in",
+    "oidc",
+    "pkce",
+    "passkeys",
+    "react-native",
+    "expo"
+  ],
+  "type": "module",
+  "sideEffects": [
+    "./dist/index.js"
+  ],
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && ../../node_modules/.bin/esbuild src/index.ts --bundle --format=esm --platform=neutral --target=es2020 --external:react --external:react-native --external:expo-auth-session --external:expo-web-browser --external:expo-secure-store --external:expo-crypto --outfile=dist/index.js && ../../node_modules/.bin/tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck",
+    "prepublishOnly": "pnpm build"
+  },
+  "peerDependencies": {
+    "expo-auth-session": ">=5",
+    "expo-crypto": ">=12",
+    "expo-secure-store": ">=12",
+    "expo-web-browser": ">=12",
+    "react": ">=18",
+    "react-native": ">=0.72"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "react": "^19.3.1",
+    "expo-auth-session": "link:./stubs/expo-auth-session",
+    "expo-crypto": "link:./stubs/expo-crypto",
+    "expo-secure-store": "link:./stubs/expo-secure-store",
+    "expo-web-browser": "link:./stubs/expo-web-browser",
+    "react-native": "link:./stubs/react-native"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

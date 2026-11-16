@@ -1,0 +1,46 @@
+{
+  "name": "@inid/js",
+  "version": "0.1.0",
+  "description": "Sign-in with InID for any page, no framework: <inid-sign-in>, <inid-user-button> and friends as custom elements, for Astro, Svelte, Vue, Solid or plain HTML. Talks to your server's InID routes.",
+  "license": "MIT",
+  "homepage": "https://inid.co/docs/",
+  "keywords": [
+    "inid",
+    "auth",
+    "authentication",
+    "sign-in",
+    "web-components",
+    "custom-elements",
+    "astro",
+    "svelte",
+    "vue",
+    "passkeys",
+    "oidc"
+  ],
+  "type": "module",
+  "sideEffects": true,
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "unpkg": "./dist/inid.global.js",
+  "jsdelivr": "./dist/inid.global.js",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./global": "./dist/inid.global.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && ../../node_modules/.bin/esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2020 --outfile=dist/index.js && ../../node_modules/.bin/esbuild src/index.ts --bundle --format=iife --global-name=InID --platform=browser --target=es2020 --minify --outfile=dist/inid.global.js && ../../node_modules/.bin/tsc src/index.ts --declaration --emitDeclarationOnly --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --lib ES2022,DOM,DOM.Iterable --types node --skipLibCheck",
+    "prepublishOnly": "pnpm build"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "expo-crypto",
+  "version": "0.0.0-stub",
+  "private": true,
+  "description": "Type-only stand-in so @inid/expo typechecks in the monorepo without installing React Native/Expo. Never published.",
+  "types": "index.d.ts"
+}

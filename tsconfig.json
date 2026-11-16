@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "lib": [
+      "ES2022",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "types": [
+      "node"
+    ],
+    "noEmit": true,
+    "paths": {
+      "@inid/react": [
+        "./packages/react/src/index.ts"
+      ],
+      "@inid/server": [
+        "./packages/server/src/index.ts"
+      ],
+      "@inid/server/express": [
+        "./packages/server/src/express.ts"
+      ],
+      "@inid/astro": [
+        "./packages/astro/src/index.ts"
+      ],
+      "@inid/sveltekit": [
+        "./packages/sveltekit/src/index.ts"
+      ]
+    }
+  },
+  "include": [
+    "packages/*/src",
+    "packages/*/test"
+  ]
+}

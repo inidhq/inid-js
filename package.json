@@ -1,0 +1,21 @@
+{
+  "name": "inid-js",
+  "private": true,
+  "description": "InID's JavaScript packages: sign-in for React, Next.js, Astro, SvelteKit, Expo, any web server and plain HTML.",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm -r build",
+    "lint": "biome lint .",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "check": "pnpm lint && pnpm typecheck && pnpm test"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.6.7",
+    "@types/node": "^22.10.5",
+    "esbuild": "^0.24.2",
+    "happy-dom": "^16.8.1",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.4"
+  }
+}

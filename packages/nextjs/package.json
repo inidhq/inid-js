@@ -1,0 +1,55 @@
+{
+  "name": "@inid/nextjs",
+  "version": "0.1.2",
+  "description": "Sign-in with InID for Next.js: a proxy that keeps the session fresh, auth() and currentUser() on the server, and the React components of @inid/react.",
+  "license": "MIT",
+  "homepage": "https://inid.co/docs/nextjs/",
+  "keywords": [
+    "inid",
+    "auth",
+    "authentication",
+    "sign-in",
+    "nextjs",
+    "react",
+    "passkeys",
+    "oidc"
+  ],
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "rm -rf dist && ../../node_modules/.bin/esbuild src/index.ts src/server.ts --bundle --format=esm --platform=neutral --target=es2020 --external:react --external:next --external:@inid/react --external:@inid/server --outdir=dist && ../../node_modules/.bin/tsc src/index.ts src/server.ts --declaration --emitDeclarationOnly --outDir dist --module NodeNext --moduleResolution NodeNext --target ES2022 --skipLibCheck",
+    "prepublishOnly": "pnpm build"
+  },
+  "dependencies": {
+    "@inid/react": "workspace:^",
+    "@inid/server": "workspace:^"
+  },
+  "peerDependencies": {
+    "next": ">=14",
+    "react": ">=18"
+  },
+  "devDependencies": {
+    "@types/react": "^19.3.0",
+    "next": "^16.4.6",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "publishConfig": {
+    "access": "public"
+  }
+}
