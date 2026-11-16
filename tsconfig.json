@@ -31,8 +31,12 @@
       ],
       "@inid/sveltekit": [
         "./packages/sveltekit/src/index.ts"
+      ],
+      "@inid/nestjs": [
+        "./packages/nestjs/src/index.ts"
       ]
-    }
+    },
+    "experimentalDecorators": true
   },
   "include": [
     "packages/*/src",

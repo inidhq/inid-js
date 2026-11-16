@@ -14,8 +14,9 @@ type Req = IncomingMessage & { originalUrl?: string; protocol?: string; auth?: A
 type Res = ServerResponse & { locals?: Record<string, unknown> };
 type Next = (err?: unknown) => void;
 
-// The request as the web sees it (InID's routes only need the URL, the method and cookies)
-function webRequest(req: Req, trustProxy: boolean): Request {
+// The request as the web sees it (InID's routes only need the URL, the method and cookies).
+// Exported for other Node frameworks built on http (NestJS, Fastify's raw request).
+export function webRequest(req: IncomingMessage & { originalUrl?: string; protocol?: string }, trustProxy = false): Request {
   const forwarded = trustProxy ? String(req.headers["x-forwarded-proto"] || "").split(",")[0].trim() : "";
   const proto = forwarded || req.protocol || ((req.socket as { encrypted?: boolean }).encrypted ? "https" : "http");
   const host = (trustProxy && String(req.headers["x-forwarded-host"] || "").split(",")[0].trim()) || req.headers.host || "localhost";
@@ -27,7 +28,7 @@ function webRequest(req: Req, trustProxy: boolean): Request {
   return new Request(`${proto}://${host}${req.originalUrl || req.url || "/"}`, { method: req.method, headers });
 }
 
-async function send(res: Res, response: Response) {
+export async function send(res: ServerResponse, response: Response) {
   res.statusCode = response.status;
   response.headers.forEach((value, name) => {
     if (name !== "set-cookie") res.setHeader(name, value);

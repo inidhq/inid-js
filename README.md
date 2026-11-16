@@ -8,6 +8,7 @@ Sign-in with [InID](https://inid.co): people sign in with their phone (a code by
 | [`@inid/react`](packages/react) | React: `<SignIn />`, `<UserProfile />`, `<Protect>`, hooks |
 | [`@inid/astro`](packages/astro) | Astro: a middleware and `Astro.locals.inid` |
 | [`@inid/sveltekit`](packages/sveltekit) | SvelteKit: a `handle` hook and `event.locals.inid` |
+| [`@inid/nestjs`](packages/nestjs) | NestJS: a module, a guard and decorators (`@Roles`, `@Public`, `@CurrentUser`) |
 | [`@inid/server`](packages/server) | Any server with web Requests (Remix, React Router, Hono, Nuxt, Bun, Deno) and Express |
 | [`@inid/js`](packages/js) | Web components for any framework or plain HTML |
 | [`@inid/expo`](packages/expo) | React Native and Expo apps |
