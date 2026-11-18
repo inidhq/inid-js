@@ -81,7 +81,8 @@ Without `guard: true`, routes are open, and the decorators below put the guard o
 | `@Public()` | nothing (with `guard: true`) |
 | `@RequireInID()` or `@Auth()` | someone signed in |
 | `@Roles("admin", "owner")` | any of these roles |
-| `@Permissions("invoices:read", "invoices:write")` | all of these permissions |
+| `@TeamRoles("admin")` | any of these roles in the person's active team (apps with teams; `user.team`) |
+| `@Permissions("invoices:read", "invoices:write")` | all of these permissions, from the app role or the active team's role |
 | `@Entrance("team")` | (nothing more) the entrance the 401 tells them to sign in through |
 
 They go on a method or on a controller. A method's `@Roles` replaces its controller's; `@Permissions` add up (the controller's and the method's, all needed). A `@Public()` controller's methods can still ask for something with `@RequireInID()`, `@Roles` or `@Permissions`.

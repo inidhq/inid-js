@@ -1,6 +1,6 @@
 import { applyDecorators, createParamDecorator, SetMetadata, UseGuards, type ExecutionContext } from "@nestjs/common";
 import { authOf, type Auth as ServerAuth, type InIDUser } from "@inid/server";
-import { ENTRANCE_KEY, PERMISSIONS_KEY, PUBLIC_KEY, REQUIRED_KEY, ROLES_KEY, rawRequest } from "./constants.js";
+import { ENTRANCE_KEY, PERMISSIONS_KEY, PUBLIC_KEY, REQUIRED_KEY, ROLES_KEY, TEAM_ROLES_KEY, rawRequest } from "./constants.js";
 import { InIDGuard, requestOf } from "./guard.js";
 
 // Who is signed in (isSignedIn, userId, user, session, has()); a type and a decorator
@@ -17,7 +17,10 @@ export const Auth = RequireInID;
 // Any of these roles
 export const Roles = (...roles: string[]) => applyDecorators(SetMetadata(ROLES_KEY, roles), UseGuards(InIDGuard));
 
-// All of these permissions (the class's and the method's)
+// Any of these roles in the person's active team (apps with teams)
+export const TeamRoles = (...roles: string[]) => applyDecorators(SetMetadata(TEAM_ROLES_KEY, roles), UseGuards(InIDGuard));
+
+// All of these permissions (the class's and the method's), from the app role or the active team's role
 export const Permissions = (...permissions: string[]) => applyDecorators(SetMetadata(PERMISSIONS_KEY, permissions), UseGuards(InIDGuard));
 
 // The entrance someone signs in through when the route turns them away (in the 401's signInUrl)

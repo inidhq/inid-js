@@ -35,6 +35,8 @@ The elements never hold a key: they talk to your own server, at `/api/inid` (or 
 | `POST /signout` | Revokes the session at InID, clears the cookies |
 | `GET /session` | `{ user, accountUrl }` |
 | `GET /sessions`, `DELETE /sessions/:id`, `DELETE /sessions?others=1` | The person's sessions at your app |
+| `POST /team` | `{ teamId }` (null: their own account): renews the session in that team → `{ user }` |
+| `/teams/…` | The person's own teams (apps with teams), forwarded to InID as them |
 
 ## Elements
 
@@ -49,7 +51,10 @@ Every element also takes `api-path` and `locale` (`es`, `en` or `pt`); left out,
 | `<inid-user-profile>` | `appearance` | The person's page in your app: their InID account (data, passkeys) in a frame your app can't read, and their sessions |
 | `<inid-user-sessions>` | | The person's sessions at your app, the current one marked; they end the others |
 | `<inid-signed-in>`, `<inid-signed-out>` | | Shows its children only then |
-| `<inid-protect>` | `role`, `permission` | Shows its children only to someone with that role or permission; to anyone else, the children with `slot="fallback"`. It hides; check on your server too |
+| `<inid-protect>` | `role`, `permission`, `team-role` | Shows its children only to someone with that role, permission (from their app role or their team role) or role in their active team; to anyone else, the children with `slot="fallback"`. It hides; check on your server too |
+| `<inid-team-switcher>` | `after-switch`, `hide-personal` | Apps with teams: the team in use, the others to switch to, their personal account (unless the app requires a team), invitations to accept, their email domain's team to join, "Create team" and "Manage team" |
+| `<inid-team-profile>` | `team-id`, `after-leave`, `inline` | The active team (or `team-id`): name and image, members and roles, invitations by email, leaving it and (admins) deleting it |
+| `<inid-create-team>` | `after-create`, `inline` | A name; the person becomes its admin and the session switches to it |
 
 `entrance` is a door of your app with its own rules ("team": only your company's people), made in the InID panel.
 
@@ -69,7 +74,7 @@ Your logo, name, colors, corners, theme, font and texts are set once in the InID
 ## Functions
 
 ```ts
-import { configure, getUser, signIn, signOut, has, reload } from "@inid/js";
+import { configure, getUser, signIn, signOut, has, reload, getTeams, setActiveTeam } from "@inid/js";
 
 configure({ apiPath: "/api/inid", locale: "en" }); // both optional
 const user = await getUser();                       // InIDUser | null
@@ -77,9 +82,14 @@ if (has(user, { role: "admin" })) { /* … */ }
 signIn("/dashboard", "team");                       // returnTo?, entrance?
 await signOut("/");                                 // POST /signout, then goes to returnTo
 await reload();                                     // asks the server again
+has(user, { teamRole: "admin" });                   // their role in the active team (user.team)
+await getTeams();                                   // { teams, invitations, joinable, settings }
+await setActiveTeam("team_…");                      // null: their own account
 ```
 
 `document` gets an `inid:user` event (`event.detail.user`) when the session loads or changes.
+
+After a team change, `after-switch`, `after-create` and `after-leave` say where to go; by default the page reloads, so what your server rendered for the old team is drawn again.
 
 ## Astro
 

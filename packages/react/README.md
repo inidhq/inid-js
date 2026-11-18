@@ -17,7 +17,7 @@ import { InIDProvider, SignedIn, SignedOut, SignIn, UserButton, useUser } from "
 </InIDProvider>
 ```
 
-The components never hold a key: they talk to your own server, at `/api/inid` (or `apiPath` on the provider). Your server answers four routes there:
+The components never hold a key: they talk to your own server, at `/api/inid` (or `apiPath` on the provider). Your server answers these routes there:
 
 | Route | |
 |---|---|
@@ -25,6 +25,8 @@ The components never hold a key: they talk to your own server, at `/api/inid` (o
 | `GET /callback` | Trades the code with your secret key, sets the session cookies |
 | `POST /signout` | Revokes the session at InID, clears the cookies |
 | `GET /session` | `{ user, accountUrl }` |
+| `POST /team` | `{ teamId }` (null: their own account): renews the session in that team → `{ user }` |
+| `/teams/…` | The person's own teams (apps with teams), forwarded to InID as them |
 
 `@inid/nextjs` is those routes for Next.js; its `core` works with any server that speaks `Request` and `Response`.
 
@@ -35,10 +37,24 @@ The components never hold a key: they talk to your own server, at `/api/inid` (o
 | `<SignInButton>`, `<SignOutButton>` | A button, or wrap your own |
 | `<UserProfile appearance? />` | The person's page in your app: their InID account (data, passkeys) in a frame your app can't read, and their sessions |
 | `<UserSessions />` | The person's sessions at your app, the current one marked; they end the others (also in `<UserButton>` → Your sessions) |
-| `<Protect role? permission? fallback?>` | Shows its children only to someone with that role or permission (it hides; check on your server too) |
+| `<Protect role? permission? teamRole? fallback?>` | Shows its children only to someone with that role, permission or role in their active team (it hides; check on your server too) |
 | `<UserButton />` | Initials and a menu: manage their InID, sign out |
 | `<SignedIn>`, `<SignedOut>` | Shows its children only then |
-| `useUser()`, `useAuth()` | The person, `has({ role, permission })`, and `signIn()` / `signOut()` |
+| `useUser()`, `useAuth()` | The person, `has({ role, permission, teamRole })`, and `signIn()` / `signOut()` |
+
+### Teams
+
+For apps with teams turned on in InID's panel (the people who use your app form teams, with members, invitations and a role per team). The person works in one team at a time: `user.team` is `{ id, slug, name, role, permissions }` or `null`, and `has({ permission })` passes if their app role or their team role grants it.
+
+| | |
+|---|---|
+| `<TeamSwitcher afterSwitch? hidePersonal? />` | The team in use, the others to switch to, their personal account (unless the app requires a team), invitations to accept, their email domain's team to join, "Create team" and "Manage team" |
+| `<CreateTeam afterCreate? inline? />` | A name; the person becomes its admin and the session switches to it |
+| `<TeamProfile teamId? inline? afterLeave? />` | The team's name and image, its members and roles, invitations by email, leaving it and (admins) deleting it |
+| `useTeam()` | `{ team, setActive(teamId \| null) }` |
+| `useTeams()` | `{ teams, invitations, joinable, settings, create, accept, decline, join, leave, remove, setActive, reload }` |
+
+Switching renews the session through your server (`POST /api/inid/team { teamId }`), and the team calls go through `/api/inid/teams/…` (your server forwards them to InID as the signed-in person). `afterSwitch`, `afterCreate` and `afterLeave` take a path or a function; by default the page reloads, so what your server rendered for the old team is drawn again.
 
 Spanish, English and Portuguese (`locale`).
 

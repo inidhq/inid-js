@@ -22,18 +22,38 @@ export interface InIDUser {
   permissions: string[];
   // What the app keeps public about this person (its metadata)
   publicMetadata: Record<string, unknown>;
+  // Their active team (apps with teams), with their role there; null: none
+  team: InIDTeam | null;
 }
 
-export type AccessCheck = { role?: string; permission?: string };
+export interface InIDTeam {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  permissions: string[];
+}
 
-// Whether someone has a role or a permission (both, if both are asked; neither: false)
-export function has(user: Pick<InIDUser, "roles" | "permissions"> | null | undefined, check: AccessCheck): boolean {
-  // Signed out: never. Nothing asked: anyone signed in (as @inid/server's hasAccess)
+export type AccessCheck = { role?: string; permission?: string; teamRole?: string };
+
+// Whether someone has a role, a role in their active team, or a permission (every one asked;
+// a permission from their app role or their team role). As @inid/server's hasAccess.
+export function has(user: (Pick<InIDUser, "roles" | "permissions"> & { team?: InIDTeam | null }) | null | undefined, check: AccessCheck): boolean {
+  // Signed out: never. Nothing asked: anyone signed in
   if (!user) return false;
   if (check.role && !user.roles.includes(check.role)) return false;
-  if (check.permission && !user.permissions.includes(check.permission)) return false;
+  if (check.teamRole && user.team?.role !== check.teamRole) return false;
+  if (check.permission && !user.permissions.includes(check.permission) && !user.team?.permissions.includes(check.permission)) return false;
   return true;
 }
+
+const teamOf = (claim: unknown): InIDTeam | null => {
+  if (!claim || typeof claim !== "object" || Array.isArray(claim)) return null;
+  const t = claim as Record<string, unknown>;
+  if (typeof t.id !== "string" || typeof t.role !== "string") return null;
+  const text = (v: unknown) => (typeof v === "string" ? v : "");
+  return { id: t.id, slug: text(t.slug), name: text(t.name), role: t.role, permissions: Array.isArray(t.permissions) ? t.permissions.filter((p): p is string => typeof p === "string") : [] };
+};
 
 export function userOf(claims: Record<string, unknown>): InIDUser {
   const text = (v: unknown) => (typeof v === "string" && v ? v : null);
@@ -50,6 +70,7 @@ export function userOf(claims: Record<string, unknown>): InIDUser {
     roles: Array.isArray(claims.roles) ? claims.roles.filter((r): r is string => typeof r === "string") : [],
     permissions: Array.isArray(claims.permissions) ? claims.permissions.filter((p): p is string => typeof p === "string") : [],
     publicMetadata: claims.public_metadata && typeof claims.public_metadata === "object" && !Array.isArray(claims.public_metadata) ? (claims.public_metadata as Record<string, unknown>) : {},
+    team: teamOf(claims.team),
   };
 }
 

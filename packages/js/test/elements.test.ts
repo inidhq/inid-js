@@ -1,7 +1,7 @@
 // @vitest-environment happy-dom
 // @vitest-environment-options {"settings":{"disableIframePageLoading":true}}
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { configure, getUser, has, signIn, signOut, type InIDUser } from "../src/index.js";
+import { configure, getUser, has, setActiveTeam, signIn, signOut, type InIDUser } from "../src/index.js";
 
 const ana: InIDUser = {
   id: "u1",
@@ -14,6 +14,7 @@ const ana: InIDUser = {
   roles: ["admin"],
   permissions: ["invoices:read"],
   publicMetadata: {},
+  team: null,
 };
 
 // The session store is shared per apiPath, and custom elements stay registered: every test
@@ -214,6 +215,118 @@ describe("the session", () => {
     expect(has(ana, { role: "admin", permission: "invoices:write" })).toBe(false);
     expect(has(null, {})).toBe(false);
     expect(has(ana, {})).toBe(true);
+  });
+
+  it("has() and <inid-protect team-role>: the active team's role, and a permission from it", async () => {
+    const inTeam = { ...ana, team: { id: "team_1", slug: "acme", name: "Acme", role: "member", permissions: ["invoices:write"] } };
+    expect([has(inTeam, { teamRole: "member" }), has(inTeam, { teamRole: "admin" }), has(inTeam, { permission: "invoices:write" }), has(ana, { teamRole: "member" })]).toEqual([true, false, true, false]);
+    serve(inTeam);
+    const element = mount(`<inid-protect team-role="admin">x<span slot="fallback">no</span></inid-protect>`);
+    await settle();
+    expect(shown(element)).toBe(false);
+    element.setAttribute("team-role", "member");
+    expect(shown(element)).toBe(true);
+  });
+});
+
+describe("teams", () => {
+  const acme = { id: "team_1", slug: "acme", name: "Acme", role: "admin", permissions: ["team:manage"] };
+  const list = {
+    teams: [{ id: "team_1", name: "Acme", slug: "acme", imageUrl: null, role: "admin", permissions: ["team:manage"], manages: true }, { id: "team_2", name: "Beta", slug: "beta", imageUrl: null, role: "member", permissions: [], manages: false }],
+    invitations: [{ id: "tinv_1", team: { id: "team_3", name: "Gamma", slug: "gamma", imageUrl: null }, role: "member", expiresAt: "2026-12-01T00:00:00.000Z" }],
+    joinable: [],
+    settings: { canCreate: true, required: false, maxPerUser: 10, roles: [{ key: "admin", name: "Admin" }, { key: "member", name: "Miembro" }], defaultRole: "member" },
+  };
+  const calls: string[] = [];
+  const serveTeams = (user: InIDUser) => {
+    calls.length = 0;
+    let current = user;
+    fetchMock.mockImplementation(async (url: string, init?: RequestInit) => {
+      const method = init?.method || "GET";
+      calls.push(`${method} ${url.replace(api, "")}${init?.body ? ` ${init.body}` : ""}`);
+      if (url === `${api}/session`) return json({ user: current, accountUrl: "https://id.example/account" });
+      if (url === `${api}/teams` && method === "GET") return json(list);
+      if (url === `${api}/team` && method === "POST") {
+        const { teamId } = JSON.parse(String(init!.body));
+        current = { ...current, team: teamId === "team_2" ? { ...acme, id: "team_2", slug: "beta", name: "Beta", role: "member", permissions: [] } : teamId === "team_3" ? { ...acme, id: "team_3", name: "Gamma", role: "member" } : teamId ? acme : null };
+        return json({ user: current });
+      }
+      if (url === `${api}/teams/invitations/tinv_1/accept`) return json({ team: { id: "team_3" } });
+      if (url === `${api}/teams/team_1` && method === "GET") return json(list.teams[0]);
+      if (url === `${api}/teams/team_1/members`) return json({ members: [{ userId: "u1", role: "admin", firstName: "Ana", lastName: "Pérez", email: "ana@example.com" }, { userId: "u2", role: "member", firstName: "Luis", lastName: null, email: "luis@example.com" }] });
+      if (url === `${api}/teams/team_1/invitations` && method === "GET") return json({ invitations: [{ id: "tinv_9", email: "nueva@example.com", role: "member" }] });
+      if (url === `${api}/teams/team_1/invitations` && method === "POST") return json({ id: "tinv_10" });
+      if (url === `${api}/teams` && method === "POST") return json({ id: "team_9", name: "Nuevo", slug: "nuevo", role: "admin" });
+      return new Response("not found", { status: 404 });
+    });
+  };
+
+  it("<inid-team-switcher>: the team in use, the others, the personal account and an invitation; choosing one renews the session and goes on", async () => {
+    serveTeams({ ...ana, team: acme });
+    const go = assign();
+    const element = mount(`<inid-team-switcher after-switch="/dashboard"></inid-team-switcher>`);
+    await settle();
+    const button = element.shadowRoot!.querySelector<HTMLButtonElement>(".inid-avatar-btn")!;
+    expect(button.textContent).toBe("AAcme");
+    button.click();
+    const items = [...element.shadowRoot!.querySelectorAll<HTMLButtonElement>("[role=menuitem]")];
+    expect(items.map((i) => i.textContent)).toEqual(["APCuenta personal", "AAcme", "BBeta", "GGammaAceptar", "Administrar equipo", "Crear equipo"]);
+    expect(items[1].getAttribute("aria-current")).toBe("true");
+    items[2].click();
+    await settle();
+    expect(calls).toContain(`POST /team {"teamId":"team_2"}`);
+    expect(go).toHaveBeenCalledWith("/dashboard");
+    expect(element.shadowRoot!.querySelector(".inid-avatar-btn")!.textContent).toBe("BBeta");
+    // Accepting the invitation: InID adds them, then the session switches to that team
+    element.shadowRoot!.querySelector<HTMLButtonElement>(".inid-avatar-btn")!.click();
+    [...element.shadowRoot!.querySelectorAll<HTMLButtonElement>("[role=menuitem]")].find((i) => i.textContent?.includes("Gamma"))!.click();
+    await settle();
+    expect(calls.slice(-2)).toEqual(["POST /teams/invitations/tinv_1/accept", `POST /team {"teamId":"team_3"}`]);
+  });
+
+  it("an app that requires a team: no personal account in the switcher; setActiveTeam() renews the session", async () => {
+    serveTeams({ ...ana, team: acme });
+    list.settings.required = true;
+    try {
+      const element = mount(`<inid-team-switcher></inid-team-switcher>`);
+      await settle();
+      element.shadowRoot!.querySelector<HTMLButtonElement>(".inid-avatar-btn")!.click();
+      expect(element.shadowRoot!.textContent).not.toContain("Cuenta personal");
+    } finally {
+      list.settings.required = false;
+    }
+    expect((await setActiveTeam(null))?.team).toBeNull();
+    expect((await getUser())?.team).toBeNull();
+  });
+
+  it("<inid-team-profile>: the members with their roles and invitations for an admin; inviting by email", async () => {
+    serveTeams({ ...ana, team: acme });
+    const element = mount(`<inid-team-profile></inid-team-profile>`);
+    await settle();
+    const root = element.shadowRoot!;
+    expect(root.querySelector<HTMLInputElement>("input[name=name]")!.value).toBe("Acme");
+    root.querySelectorAll<HTMLButtonElement>("[role=tab]")[1].click();
+    expect([...root.querySelectorAll("li b")].map((b) => b.textContent)).toEqual(["Ana Pérez", "Luis", "nueva@example.com"]);
+    // Ana herself: no role to change; Luis: a role to choose and a way out
+    expect(root.querySelectorAll("li")[0].querySelector("select")).toBeNull();
+    expect(root.querySelectorAll("li")[1].querySelector("select")!.value).toBe("member");
+    const form = root.querySelector<HTMLFormElement>("form.inid-row")!;
+    form.querySelector<HTMLInputElement>("input[name=email]")!.value = "otra@example.com";
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    await settle();
+    expect(calls).toContain(`POST /teams/team_1/invitations {"email":"otra@example.com","role":"member"}`);
+  });
+
+  it("<inid-create-team>: a name; the person's session switches to the new team", async () => {
+    serveTeams(ana);
+    const go = assign();
+    const element = mount(`<inid-create-team after-create="/team"></inid-create-team>`);
+    const form = element.shadowRoot!.querySelector("form")!;
+    form.querySelector("input")!.value = "Nuevo";
+    form.dispatchEvent(new Event("submit", { cancelable: true }));
+    await settle();
+    expect(calls.filter((c) => c.startsWith("POST"))).toEqual([`POST /teams {"name":"Nuevo"}`, `POST /team {"teamId":"team_9"}`]);
+    expect(go).toHaveBeenCalledWith("/team");
   });
 });
 

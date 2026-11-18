@@ -136,10 +136,10 @@ export function SignedOut({ children }: { children?: ReactNode }) {
 
 // Shows its children only to someone with that role or permission; to anyone else, the
 // fallback. It hides; your backend still checks.
-export function Protect({ role, permission, fallback = null, children }: AccessCheck & { fallback?: ReactNode; children?: ReactNode }) {
+export function Protect({ role, permission, teamRole, fallback = null, children }: AccessCheck & { fallback?: ReactNode; children?: ReactNode }) {
   const { isLoaded, user } = useContextOf("<Protect>");
   if (!isLoaded) return null;
-  return h(Fragment, null, has(user, { role, permission }) ? children : fallback);
+  return h(Fragment, null, has(user, { role, permission, teamRole }) ? children : fallback);
 }
 
 // ---------- buttons ----------

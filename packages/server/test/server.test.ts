@@ -1,6 +1,6 @@
 import { createServer, type Server } from "node:http";
 import { afterEach, describe, expect, it } from "vitest";
-import { gate, type InIDAuth, type InIDSession } from "../src/index.js";
+import { gate, hasAccess, type InIDAuth, type InIDSession } from "../src/index.js";
 import { inid as inidExpress } from "../src/express.js";
 
 // An InID whose session is whatever the test says (gate only asks it these)
@@ -32,6 +32,21 @@ describe("gate: what every framework's middleware does", () => {
     expect((await gate(fake(ana), at("/admin"), { protect })).response!.status).toBe(403);
     const fine = await gate(fake(ana), at("/orders/7"), { protect });
     expect([fine.response, fine.auth.userId, fine.auth.has({ role: "staff" }), fine.auth.has({ role: "admin" })]).toEqual([undefined, "u1", true, false]);
+  });
+
+  it("has(): the app role, the active team's role, and a permission from either", async () => {
+    const team = { id: "team_1", slug: "acme", name: "Acme", role: "admin", permissions: ["invoices:write"] };
+    const inTeam = { roles: ["staff"], permissions: ["orders:read"], team };
+    expect([hasAccess(inTeam, { teamRole: "admin" }), hasAccess(inTeam, { teamRole: "member" }), hasAccess(inTeam, { permission: "invoices:write" }), hasAccess(inTeam, { permission: "orders:read" })]).toEqual([true, false, true, true]);
+    expect(hasAccess(inTeam, { role: "staff", teamRole: "admin", permission: "invoices:write" })).toBe(true);
+    expect(hasAccess(inTeam, { role: "owner", teamRole: "admin" })).toBe(false);
+    // Without a team: no team role, only the app's permissions
+    const alone = { roles: ["staff"], permissions: ["orders:read"], team: null };
+    expect([hasAccess(alone, { teamRole: "admin" }), hasAccess(alone, { permission: "invoices:write" }), hasAccess(alone, {})]).toEqual([false, false, true]);
+    // A path that needs a team role
+    const admin = { ...ana, user: { ...ana.user, team } } as unknown as InIDSession;
+    expect((await gate(fake(ana), at("/team/settings"), { protect: [{ path: "/team", teamRole: "admin" }] })).response!.status).toBe(403);
+    expect((await gate(fake(admin), at("/team/settings"), { protect: [{ path: "/team", teamRole: "admin" }] })).response).toBeUndefined();
   });
 
   it("a renewed session: its cookies for the page, and for the rest of the request", async () => {

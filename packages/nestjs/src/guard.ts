@@ -1,7 +1,7 @@
 import { ForbiddenException, Inject, Injectable, UnauthorizedException, type CanActivate, type ExecutionContext } from "@nestjs/common";
 import { Reflector } from "@nestjs/core";
 import type { Auth } from "@inid/server";
-import { ENTRANCE_KEY, PERMISSIONS_KEY, PUBLIC_KEY, REQUIRED_KEY, ROLES_KEY, rawRequest } from "./constants.js";
+import { ENTRANCE_KEY, PERMISSIONS_KEY, PUBLIC_KEY, REQUIRED_KEY, ROLES_KEY, TEAM_ROLES_KEY, rawRequest } from "./constants.js";
 import { InIDService } from "./service.js";
 
 // The request behind a route: HTTP's, or the one GraphQL resolvers get in their context
@@ -33,6 +33,9 @@ export class InIDGuard implements CanActivate {
     // The method's roles replace the class's (any of them will do); permissions add up (all needed)
     const roles = this.reflector.getAllAndOverride<string[] | undefined>(ROLES_KEY, targets) ?? [];
     if (roles.length && !roles.some((role) => auth.has({ role }))) throw new ForbiddenException({ statusCode: 403, error: "Forbidden", message: "Missing role", roles });
+    // A role in the person's active team, the same way (any of them)
+    const teamRoles = this.reflector.getAllAndOverride<string[] | undefined>(TEAM_ROLES_KEY, targets) ?? [];
+    if (teamRoles.length && !teamRoles.some((teamRole) => auth.has({ teamRole }))) throw new ForbiddenException({ statusCode: 403, error: "Forbidden", message: "Missing team role", teamRoles });
     const permissions = this.reflector.getAllAndMerge<string[]>(PERMISSIONS_KEY, targets) ?? [];
     const missing = permissions.filter((permission) => !auth.has({ permission }));
     if (missing.length) throw new ForbiddenException({ statusCode: 403, error: "Forbidden", message: "Missing permission", permissions: missing });
@@ -45,7 +48,7 @@ export class InIDGuard implements CanActivate {
     const onHandler = this.reflector.get<boolean | undefined>(PUBLIC_KEY, handler);
     if (onHandler !== undefined) return onHandler;
     if (!this.reflector.get<boolean | undefined>(PUBLIC_KEY, context.getClass())) return false;
-    return ![REQUIRED_KEY, ROLES_KEY, PERMISSIONS_KEY].some((key) => this.reflector.get(key, handler) !== undefined);
+    return ![REQUIRED_KEY, ROLES_KEY, TEAM_ROLES_KEY, PERMISSIONS_KEY].some((key) => this.reflector.get(key, handler) !== undefined);
   }
 
   // The session the middleware found, else a bearer token; kept on the request for the

@@ -34,14 +34,28 @@ export interface InIDUser {
   permissions: string[];
   // What the app keeps public about this person (set in InID's panel or by the app's server)
   publicMetadata: Record<string, unknown>;
+  // The team they're working in now (apps with teams), with their role there; null: none
+  team: InIDTeam | null;
 }
 
-// Whether someone has a role or a permission (both, if both are asked)
-export type AccessCheck = { role?: string; permission?: string };
-export function hasAccess(user: Pick<InIDUser, "roles" | "permissions"> | null | undefined, check: AccessCheck) {
+// The person's active team: chosen per session (POST {apiPath}/team), in the ID token
+export interface InIDTeam {
+  id: string;
+  slug: string;
+  name: string;
+  // Their role in this team (the app's team roles) and what it allows
+  role: string;
+  permissions: string[];
+}
+
+// Whether someone has a role, a role in their active team, or a permission (every one asked).
+// A permission counts from their app role or their active team's role.
+export type AccessCheck = { role?: string; permission?: string; teamRole?: string };
+export function hasAccess(user: Pick<InIDUser, "roles" | "permissions"> & { team?: InIDTeam | null } | null | undefined, check: AccessCheck) {
   if (!user) return false;
   if (check.role && !user.roles.includes(check.role)) return false;
-  if (check.permission && !user.permissions.includes(check.permission)) return false;
+  if (check.teamRole && user.team?.role !== check.teamRole) return false;
+  if (check.permission && !user.permissions.includes(check.permission) && !user.team?.permissions.includes(check.permission)) return false;
   return true;
 }
 
@@ -171,6 +185,20 @@ export function userOf(claims: Record<string, unknown>): InIDUser {
     roles: Array.isArray(claims.roles) ? claims.roles.filter((r): r is string => typeof r === "string") : [],
     permissions: Array.isArray(claims.permissions) ? claims.permissions.filter((p): p is string => typeof p === "string") : [],
     publicMetadata: claims.public_metadata && typeof claims.public_metadata === "object" && !Array.isArray(claims.public_metadata) ? (claims.public_metadata as Record<string, unknown>) : {},
+    team: teamOf(claims.team),
+  };
+}
+
+function teamOf(claim: unknown): InIDTeam | null {
+  if (!claim || typeof claim !== "object" || Array.isArray(claim)) return null;
+  const t = claim as Record<string, unknown>;
+  if (typeof t.id !== "string" || typeof t.role !== "string") return null;
+  return {
+    id: t.id,
+    slug: typeof t.slug === "string" ? t.slug : "",
+    name: typeof t.name === "string" ? t.name : "",
+    role: t.role,
+    permissions: Array.isArray(t.permissions) ? t.permissions.filter((p): p is string => typeof p === "string") : [],
   };
 }
 
@@ -360,6 +388,49 @@ export function createInIDAuth(config: InIDConfig) {
           for (const id of ending) await fetch(`${base}/${encodeURIComponent(id)}`, { method: "DELETE", headers: asApp });
           return json({ ended: ending.length });
         }
+      }
+
+      // The person's active team: POST team { teamId } (null: their own account). InID renews
+      // the session with it, so the new cookies (and this answer) say the team.
+      if (request.method === "POST" && action === "team") {
+        const json = (body: unknown, status = 200, cookies: string[] = []) => {
+          const headers = new Headers({ "content-type": "application/json", "cache-control": "no-store" });
+          for (const c of cookies) headers.append("set-cookie", c);
+          return new Response(JSON.stringify(body), { status, headers });
+        };
+        const jar = parseCookies(request.headers.get("cookie"));
+        const { session: current } = await session(request.headers.get("cookie"));
+        if (!current || !jar[COOKIES.refresh]) return json({ error: "not_signed_in" }, 401);
+        const asked = ((await request.json().catch(() => ({}))) as { teamId?: unknown }).teamId;
+        if (asked !== null && typeof asked !== "string") return json({ error: "invalid_request" }, 400);
+        try {
+          const tokens = await token({ grant_type: "refresh_token", refresh_token: jar[COOKIES.refresh], team: typeof asked === "string" ? asked : "" });
+          const renewed = await verify(tokens.id_token);
+          if (!renewed) throw new InIDAuthError("invalid_id_token", 400);
+          return json({ user: userOf(renewed.claims) }, 200, sessionCookies(tokens, secure));
+        } catch (err) {
+          if (!(err instanceof InIDAuthError)) throw err;
+          // The session itself is over; anything else (a team they aren't in) leaves it as it was
+          if (err.code === "invalid_grant") return json({ error: "not_signed_in" }, 401, clearCookies(secure));
+          return json({ error: err.code }, err.status && err.status < 500 ? 400 : 502);
+        }
+      }
+
+      // The person's own teams, through the app's server (InID checks what their team role
+      // lets them do): teams, teams/:id, teams/:id/members… → {issuer}/v1/users/{sub}/teams…
+      if (action === "teams" || action.startsWith("teams/")) {
+        const { session: current } = await session(request.headers.get("cookie"));
+        const json = (body: unknown, status = 200) => new Response(JSON.stringify(body), { status, headers: { "content-type": "application/json", "cache-control": "no-store" } });
+        if (!current) return json({ error: "not_signed_in" }, 401);
+        const rest = action.slice("teams".length);
+        if (!/^(\/[\w-]{1,80}){0,4}$/.test(rest) || !["GET", "POST", "PATCH", "DELETE"].includes(request.method)) return json({ error: "not_found" }, 404);
+        const body = request.method === "GET" || request.method === "DELETE" ? undefined : await request.text();
+        const res = await fetch(`${issuer}/v1/users/${encodeURIComponent(current.user.id)}/teams${rest}`, {
+          method: request.method,
+          headers: { authorization: `Bearer ${config.secretKey}`, ...(body && { "content-type": "application/json" }) },
+          ...(body && { body }),
+        });
+        return json(await res.json().catch(() => ({ error: "teams_unavailable" })), res.status >= 500 ? 502 : res.status);
       }
 
       if (request.method === "GET" && action === "session") {

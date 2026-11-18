@@ -7,6 +7,7 @@ export {
   type InIDClientState,
   type InIDDeps,
   InIDError,
+  type InIDTeam,
   type InIDUser,
   type SignInOptions,
   userOf,

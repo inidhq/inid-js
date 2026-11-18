@@ -4,7 +4,7 @@ import { FastifyAdapter } from "@nestjs/platform-fastify";
 import { Test } from "@nestjs/testing";
 import request from "supertest";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
-import { type Auth, CurrentUser, Entrance, InIDAuth, InIDModule, InIDService, Permissions, Public, Roles, UserId, type InIDModuleOptions, type InIDUser } from "../src/index.js";
+import { type Auth, CurrentUser, Entrance, InIDAuth, InIDModule, InIDService, Permissions, Public, Roles, TeamRoles, UserId, type InIDModuleOptions, type InIDUser } from "../src/index.js";
 import { config, idToken, renewed, signWebhook, stubFetch } from "./helpers.js";
 
 let restore: () => void;
@@ -45,6 +45,13 @@ class AppController {
   @Get("team")
   team() {
     return { team: true };
+  }
+
+  @TeamRoles("admin")
+  @Permissions("invoices:write")
+  @Get("team-billing")
+  teamBilling(@CurrentUser("team") team: InIDUser["team"]) {
+    return { team: team?.slug };
   }
 
   @Public()
@@ -134,6 +141,15 @@ describe.each(["express", "fastify"] as const)("InIDModule on %s", (platform) =>
     expect((await http().get("/admin").set(bearer({ roles: ["owner"] }))).status).toBe(200);
     expect((await http().get("/invoices").set(bearer({ permissions: ["invoices:read"] }))).status).toBe(403);
     expect((await http().get("/invoices").set(bearer({ permissions: ["invoices:read", "invoices:write"] }))).status).toBe(200);
+  });
+
+  it("@TeamRoles: a role in the active team; a permission counts from the team's role too", async () => {
+    const team = (role: string, permissions: string[] = []) => ({ team: { id: "team_1", slug: "acme", name: "Acme", role, permissions } });
+    expect((await http().get("/team-billing").set(bearer({ permissions: ["invoices:write"] }))).status).toBe(403);
+    expect((await http().get("/team-billing").set(bearer(team("member", ["invoices:write"])))).status).toBe(403);
+    const ok = await http().get("/team-billing").set(bearer(team("admin", ["invoices:write"])));
+    expect([ok.status, ok.body]).toEqual([200, { team: "acme" }]);
+    expect((await http().get("/invoices").set(bearer({ permissions: ["invoices:read"], ...team("member", ["invoices:write"]) }))).status).toBe(200);
   });
 
   it("class and method decorators: a public class's method can ask; permissions add up", async () => {

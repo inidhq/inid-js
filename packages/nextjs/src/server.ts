@@ -9,7 +9,7 @@ import { authOf, configFromEnv, createInIDAuth, gate, type Auth, type InIDAuth, 
 //
 // The keys come from INID_PUBLISHABLE_KEY and INID_SECRET_KEY (or setup({ ... }) first).
 
-export { InIDAuthError, hasAccess, type AccessCheck, type Auth, type InIDConfig, type InIDSession, type InIDUser, type Protect, type Rule } from "@inid/server";
+export { InIDAuthError, hasAccess, type AccessCheck, type Auth, type InIDConfig, type InIDSession, type InIDTeam, type InIDUser, type Protect, type Rule } from "@inid/server";
 
 let instance: InIDAuth | null = null;
 const inid = () => (instance ??= createInIDAuth(configFromEnv()));

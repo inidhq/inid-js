@@ -234,6 +234,12 @@ describe("has() and the user", () => {
     expect(has(user, {})).toBe(true); // nothing asked: anyone signed in
     expect(has(null, {})).toBe(false);
     expect(has(null, { role: "admin" })).toBe(false);
-    expect(userOf({ sub: "u", name: "Ana" })).toMatchObject({ name: "Ana", roles: [], publicMetadata: {}, emailVerified: false });
+    expect(userOf({ sub: "u", name: "Ana" })).toMatchObject({ name: "Ana", roles: [], publicMetadata: {}, emailVerified: false, team: null });
+  });
+
+  it("the active team: its role, and a permission from it", () => {
+    const user = userOf({ ...claims(), team: { id: "team_1", slug: "acme", name: "Acme", role: "member", permissions: ["reports:read"] } });
+    expect(user.team).toEqual({ id: "team_1", slug: "acme", name: "Acme", role: "member", permissions: ["reports:read"] });
+    expect([has(user, { teamRole: "member" }), has(user, { teamRole: "admin" }), has(user, { permission: "reports:read" }), has(user, { permission: "invoices:read" })]).toEqual([true, false, true, true]);
   });
 });

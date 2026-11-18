@@ -36,7 +36,7 @@ export async function handler(request: Request): Promise<Response> {
 }
 ```
 
-`auth` has `isSignedIn`, `userId` (this person's id in your app), `user` (name, email, phone… what they authorized, plus `roles`, `permissions` and `publicMetadata`), `session` and `has({ role })` / `has({ permission })`. Anywhere else, `await inid.auth(request)` reads who's signed in.
+`auth` has `isSignedIn`, `userId` (this person's id in your app), `user` (name, email, phone… what they authorized, plus `roles`, `permissions`, `publicMetadata` and `team`, the active team in apps with teams), `session` and `has({ role })` / `has({ teamRole })` / `has({ permission })` (from the app role or the team role). Apps with teams also get `POST /api/inid/team` (switch the active team) and `/api/inid/teams/…` (the person's own teams); see [Teams](https://inid.co/docs/teams/). Anywhere else, `await inid.auth(request)` reads who's signed in.
 
 **Hono:** `app.use(async (c, next) => { const g = await inid.gate(c.req.raw, { protect }); if (g.response) return g.response; c.set("auth", g.auth); await next(); g.setCookies.forEach((s) => c.header("set-cookie", s, { append: true })); })`
 

@@ -19,14 +19,28 @@ export interface InIDUser {
   permissions: string[];
   // What the app keeps public about this person (its metadata)
   publicMetadata: Record<string, unknown>;
+  // The team they work in now (apps with teams), with their role there; null: none
+  team: InIDTeam | null;
 }
 
-export type AccessCheck = { role?: string; permission?: string };
+export interface InIDTeam {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  permissions: string[];
+}
+
+// role: an app role; teamRole: a role in the active team; permission: from either
+export type AccessCheck = { role?: string; permission?: string; teamRole?: string };
 export type Locale = "es" | "en" | "pt";
 
-// has(user, { role: "admin" }), has(user, { permission: "invoices:read" })
+// has(user, { role: "admin" }), has(user, { teamRole: "admin" }), has(user, { permission: "invoices:read" })
 export const has = (user: InIDUser | null | undefined, check: AccessCheck): boolean =>
-  Boolean(user) && (!check.role || (user!.roles ?? []).includes(check.role)) && (!check.permission || (user!.permissions ?? []).includes(check.permission));
+  Boolean(user) &&
+  (!check.role || (user!.roles ?? []).includes(check.role)) &&
+  (!check.teamRole || user!.team?.role === check.teamRole) &&
+  (!check.permission || (user!.permissions ?? []).includes(check.permission) || Boolean(user!.team?.permissions?.includes(check.permission)));
 
 const TEXTS = {
   es: {
@@ -52,6 +66,41 @@ const TEXTS = {
     hoursAgo: "hace {n} h",
     close: "Listo",
     browser: "Navegador",
+    teams: "Equipos",
+    switchTeam: "Cambiar de equipo",
+    personal: "Cuenta personal",
+    createTeam: "Crear equipo",
+    createTeamLead: "Un espacio para trabajar con otras personas. Tú quedas como su administrador.",
+    teamName: "Nombre del equipo",
+    create: "Crear",
+    manageTeam: "Administrar equipo",
+    invitations: "Invitaciones",
+    accept: "Aceptar",
+    join: "Unirte",
+    fromDomain: "De tu dominio",
+    general: "General",
+    members: "Miembros",
+    invite: "Invitar",
+    inviteEmail: "correo@empresa.com",
+    pending: "Invitaciones pendientes",
+    revoke: "Quitar",
+    remove: "Sacar",
+    leave: "Salir del equipo",
+    deleteTeam: "Eliminar equipo",
+    confirmDelete: "¿Eliminar {team}? Sus miembros dejan de verlo y no se puede deshacer.",
+    confirmLeave: "¿Salir de {team}?",
+    save: "Guardar",
+    imageUrl: "Imagen (una dirección https)",
+    you: "Tú",
+    noTeam: "Aún no estás en un equipo.",
+    role: "Rol",
+    failed: "Algo falló. Inténtalo de nuevo.",
+    not_allowed: "Tu rol en este equipo no lo permite.",
+    last_admin: "El equipo necesita al menos un administrador.",
+    invalid_email: "Revisa el correo.",
+    too_many_teams: "Ya estás en el máximo de equipos.",
+    invalid_team: "Revisa el nombre del equipo.",
+    team_creation_disabled: "En esta app no puedes crear equipos.",
   },
   en: {
     continue: "Continue with InID",
@@ -76,6 +125,41 @@ const TEXTS = {
     hoursAgo: "{n} h ago",
     close: "Done",
     browser: "Browser",
+    teams: "Teams",
+    switchTeam: "Switch team",
+    personal: "Personal account",
+    createTeam: "Create team",
+    createTeamLead: "A space to work with other people. You'll be its admin.",
+    teamName: "Team name",
+    create: "Create",
+    manageTeam: "Manage team",
+    invitations: "Invitations",
+    accept: "Accept",
+    join: "Join",
+    fromDomain: "From your domain",
+    general: "General",
+    members: "Members",
+    invite: "Invite",
+    inviteEmail: "name@company.com",
+    pending: "Pending invitations",
+    revoke: "Revoke",
+    remove: "Remove",
+    leave: "Leave team",
+    deleteTeam: "Delete team",
+    confirmDelete: "Delete {team}? Its members lose access and it can't be undone.",
+    confirmLeave: "Leave {team}?",
+    save: "Save",
+    imageUrl: "Image (an https address)",
+    you: "You",
+    noTeam: "You're not in a team yet.",
+    role: "Role",
+    failed: "Something went wrong. Try again.",
+    not_allowed: "Your role in this team doesn't allow it.",
+    last_admin: "The team needs at least one admin.",
+    invalid_email: "Check the email.",
+    too_many_teams: "You're already in as many teams as allowed.",
+    invalid_team: "Check the team's name.",
+    team_creation_disabled: "This app doesn't let you create teams.",
   },
   pt: {
     continue: "Continuar com InID",
@@ -100,6 +184,41 @@ const TEXTS = {
     hoursAgo: "há {n} h",
     close: "Pronto",
     browser: "Navegador",
+    teams: "Equipes",
+    switchTeam: "Trocar de equipe",
+    personal: "Conta pessoal",
+    createTeam: "Criar equipe",
+    createTeamLead: "Um espaço para trabalhar com outras pessoas. Você fica como administrador.",
+    teamName: "Nome da equipe",
+    create: "Criar",
+    manageTeam: "Gerenciar equipe",
+    invitations: "Convites",
+    accept: "Aceitar",
+    join: "Entrar",
+    fromDomain: "Do seu domínio",
+    general: "Geral",
+    members: "Membros",
+    invite: "Convidar",
+    inviteEmail: "nome@empresa.com",
+    pending: "Convites pendentes",
+    revoke: "Remover",
+    remove: "Tirar",
+    leave: "Sair da equipe",
+    deleteTeam: "Excluir equipe",
+    confirmDelete: "Excluir {team}? Seus membros perdem o acesso e não dá para desfazer.",
+    confirmLeave: "Sair de {team}?",
+    save: "Salvar",
+    imageUrl: "Imagem (um endereço https)",
+    you: "Você",
+    noTeam: "Você ainda não está em uma equipe.",
+    role: "Função",
+    failed: "Algo deu errado. Tente de novo.",
+    not_allowed: "Sua função nesta equipe não permite.",
+    last_admin: "A equipe precisa de pelo menos um administrador.",
+    invalid_email: "Confira o e-mail.",
+    too_many_teams: "Você já está no máximo de equipes.",
+    invalid_team: "Confira o nome da equipe.",
+    team_creation_disabled: "Este app não permite criar equipes.",
   },
 };
 type Texts = (typeof TEXTS)["es"];
@@ -173,7 +292,10 @@ const storeFor = (apiPath: string) => {
 
 // Who is signed in (null when nobody): asked once, then shared
 export async function getUser(): Promise<InIDUser | null> {
-  return (await storeFor(resolveApiPath()).load()).user;
+  const store = storeFor(resolveApiPath());
+  await store.load();
+  // As it is now (a team switched after it loaded, say)
+  return store.state.user;
 }
 
 // Asks the server again (after something changed); the elements follow
@@ -203,6 +325,50 @@ export function signOut(returnTo = "/"): Promise<void> {
   return goSignOut(resolveApiPath(), returnTo);
 }
 
+// ---------- teams ----------
+// The app's InID routes, as JSON; what InID refused comes back as an error with its code
+async function call(apiPath: string, path: string, method = "GET", body?: unknown): Promise<any> {
+  const res = await fetch(`${apiPath}/${path}`, {
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+    ...(body !== undefined && { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw Object.assign(new Error(String(data.error || "failed")), { code: String(data.error || "failed") });
+  return data;
+}
+
+const switchTeam = async (apiPath: string, teamId: string | null) => {
+  const { user } = (await call(apiPath, "team", "POST", { teamId })) as { user: InIDUser | null };
+  const store = storeFor(apiPath);
+  store.set({ ...store.state, loaded: true, user });
+  return user;
+};
+
+// Works in another team (null: their own account): the server renews the session with it
+export function setActiveTeam(teamId: string | null): Promise<InIDUser | null> {
+  return switchTeam(resolveApiPath(), teamId);
+}
+
+// The person's teams, the invitations to their email and their domain's team to join, with
+// what the app lets them do (creating, whether a team is required, the team roles)
+export type TeamItem = { id: string; name: string; slug: string; imageUrl: string | null; role: string; permissions: string[]; manages: boolean };
+export type TeamsList = {
+  teams: TeamItem[];
+  invitations: Array<{ id: string; team: { id: string; name: string; slug: string; imageUrl: string | null }; role: string; expiresAt: string }>;
+  joinable: Array<{ id: string; name: string; slug: string; imageUrl: string | null }>;
+  settings: { canCreate: boolean; required: boolean; maxPerUser: number; roles: Array<{ key: string; name: string }>; defaultRole: string };
+};
+export function getTeams(): Promise<TeamsList> {
+  return call(resolveApiPath(), "teams");
+}
+
+// What a team change goes on to: the after-* attribute's path, or the page again
+const goOn = (after: string | null) => (after ? location.assign(after) : location.reload());
+const teamInitial = (name: string | undefined) => (name?.trim()[0] || "·").toUpperCase();
+const errorText = (t: Texts, err: unknown) => (t as Record<string, string>)[(err as { code?: string }).code ?? ""] ?? t.failed;
+
 // ---------- the look ----------
 // Same as @inid/react's. Inside each shadow root, --i-* take the app's --inid-* when set
 // (on the element or any ancestor) so the app can theme it from outside.
@@ -219,11 +385,25 @@ const CSS = `
 .inid-card h2{margin:16px 0 6px;font-size:20px;font-weight:650;letter-spacing:-.01em}
 .inid-card p{margin:0 0 20px;font-size:14px;line-height:1.5;color:var(--i-muted)}
 .inid-frame{display:block;width:100%;border:0;overflow:hidden;margin-top:8px;background:transparent;color-scheme:normal;transition:height .15s ease}
-.inid-sessions ul{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
-.inid-sessions li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--i-line);border-radius:var(--i-radius)}
-.inid-sessions li b{display:block;font-size:14px;font-weight:600}
-.inid-sessions li small{display:block;font-size:12.5px;color:var(--i-muted)}
-.inid-sessions li em{font-style:normal;font-size:12.5px;color:var(--i-muted);white-space:nowrap}
+.inid-sessions ul,.inid-list ul{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+.inid-sessions li,.inid-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--i-line);border-radius:var(--i-radius)}
+.inid-sessions li b,.inid-list li b{display:block;font-size:14px;font-weight:600}
+.inid-sessions li small,.inid-list li small{display:block;font-size:12.5px;color:var(--i-muted)}
+.inid-sessions li em,.inid-list li em{font-style:normal;font-size:12.5px;color:var(--i-muted);white-space:nowrap}
+.inid-list li>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.inid-list li>span:last-child{display:flex;gap:6px;align-items:center;flex:none}
+.inid-list h3{margin:16px 0 8px;font-size:13px;font-weight:650}
+.inid-field{width:100%;min-height:40px;padding:0 12px;border:1px solid var(--i-line);border-radius:calc(var(--i-radius) - 2px);background:var(--i-bg);color:var(--i-ink);font:400 14px/1.2 var(--inid-font,inherit)}
+.inid-field:focus{outline:2px solid var(--i-ink);outline-offset:1px}
+select.inid-field{width:auto;min-height:32px;padding:0 8px;font-size:13px}
+.inid-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}.inid-row input.inid-field{flex:1;min-width:160px}
+.inid-error{color:#c4231a;font-size:13px;margin:0 0 12px}
+.inid-menu-label{margin:8px 8px 4px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--i-muted)}
+.inid-menu-item[aria-current="true"]{font-weight:650}
+.inid-menu-item small{margin-left:auto;padding-left:8px;font-size:12px;color:var(--i-muted)}
+.inid-menu-item .inid-avatar,.inid-avatar-btn .inid-avatar.inid-square{width:24px;height:24px;font-size:11px;margin-right:8px;flex:none}
+.inid-avatar.inid-square{border-radius:calc(var(--i-radius) - 4px)}
+.inid-menu hr{border:0;border-top:1px solid var(--i-line);margin:4px 0}
 .inid-sessions[aria-busy]{min-height:60px}
 .inid-btn.inid-quiet{background:var(--i-bg);color:var(--i-ink);border-color:var(--i-line);min-height:32px;padding:0 12px;font-size:13px}
 .inid-profile{max-width:560px}
@@ -466,11 +646,11 @@ class SignedOutElement extends InIDElement {
 // Shows its children only to someone with that role or permission; to anyone else, the
 // fallback slot. It hides; the app's server still checks.
 class ProtectElement extends InIDElement {
-  static observedAttributes = [...InIDElement.observedAttributes, "role", "permission"];
+  static observedAttributes = [...InIDElement.observedAttributes, "role", "permission", "team-role"];
   protected key() {
     const { loaded, user } = this.session;
     if (!loaded) return "wait";
-    return has(user, { role: this.getAttribute("role") || undefined, permission: this.getAttribute("permission") || undefined }) ? "show" : "fallback";
+    return has(user, { role: this.getAttribute("role") || undefined, permission: this.getAttribute("permission") || undefined, teamRole: this.getAttribute("team-role") || undefined }) ? "show" : "fallback";
   }
   protected view() {
     const key = this.key();
@@ -857,6 +1037,297 @@ class UserButtonElement extends InIDElement {
   }
 }
 
+// ---------- teams ----------
+// A new team: its name; the person its admin, then the session works in it. inline: inside
+// something of the app's (a dialog), without a card of its own. after-create: where to go.
+class CreateTeamElement extends InIDElement {
+  static observedAttributes = [...InIDElement.observedAttributes, "after-create", "inline"];
+  private error: string | null = null;
+  private busy = false;
+  protected get needsSession() {
+    return false;
+  }
+  protected key() {
+    return JSON.stringify([this.error, this.busy, this.locale, this.hasAttribute("inline")]);
+  }
+  private async create(form: HTMLFormElement) {
+    this.busy = true;
+    this.error = null;
+    this.update();
+    try {
+      const team = (await call(this.apiPath, "teams", "POST", { name: String(new FormData(form).get("name") || "") })) as TeamItem;
+      await switchTeam(this.apiPath, team.id);
+      this.dispatchEvent(new CustomEvent("inid:team", { bubbles: true, composed: true, detail: { team } }));
+      goOn(this.getAttribute("after-create"));
+    } catch (err) {
+      this.error = errorText(this.t, err);
+      this.busy = false;
+      this.update();
+    }
+  }
+  protected view(): Node[] {
+    const t = this.t;
+    const body = [
+      el("p", { class: "inid-muted" }, t.createTeamLead),
+      el("form", { class: "inid-row", onsubmit: (e: Event) => (e.preventDefault(), void this.create(e.target as HTMLFormElement)) },
+        el("input", { class: "inid-field", name: "name", required: true, maxlength: "80", placeholder: t.teamName, "aria-label": t.teamName, autocomplete: "organization" }),
+        el("button", { type: "submit", class: "inid-btn", disabled: this.busy }, t.create)
+      ),
+      this.error && el("p", { class: "inid-error", role: "alert" }, this.error),
+    ];
+    const css = style(`${CSS}:host{display:block}`);
+    if (this.hasAttribute("inline")) return [css, el("div", { class: "inid" }, ...body)];
+    return [css, el("section", { class: "inid inid-card", part: "card", "aria-label": t.createTeam }, el("h2", { style: "margin-top:0" }, t.createTeam), ...body)];
+  }
+}
+
+// The person's teams, in a corner: the one in use, the others, their own account (where the
+// app doesn't require a team), invitations to accept, their domain's team to join, and creating
+// or managing one. after-switch: where to go after a change (else the page reloads).
+class TeamSwitcherElement extends InIDElement {
+  static observedAttributes = [...InIDElement.observedAttributes, "after-switch", "hide-personal"];
+  private list: TeamsList | null = null;
+  private open = false;
+  private dialog: "create" | "manage" | null = null;
+  private error: string | null = null;
+  private cleanup: (() => void) | null = null;
+
+  connectedCallback() {
+    const away = (e: Event) => {
+      if (this.open && !e.composedPath().includes(this)) ((this.open = false), this.update());
+    };
+    const keys = (e: KeyboardEvent) => {
+      if (this.open && e.key === "Escape") ((this.open = false), this.update());
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", keys);
+    this.cleanup = () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", keys);
+    };
+    super.connectedCallback();
+    void this.load();
+  }
+  disconnectedCallback() {
+    this.cleanup?.();
+    this.cleanup = null;
+    super.disconnectedCallback();
+  }
+  private async load() {
+    try {
+      this.list = (await call(this.apiPath, "teams")) as TeamsList;
+    } catch {
+      this.list = null;
+    }
+    this.update();
+  }
+  private async act(run: () => Promise<unknown>) {
+    this.open = false;
+    this.error = null;
+    this.update();
+    try {
+      await run();
+      goOn(this.getAttribute("after-switch"));
+    } catch (err) {
+      this.error = errorText(this.t, err);
+      this.update();
+    }
+  }
+  protected key() {
+    const { loaded, user } = this.session;
+    return JSON.stringify([loaded && user, this.list, this.open, this.dialog, this.error, this.locale]);
+  }
+  protected view(): Node[] {
+    const { loaded, user } = this.session;
+    if (!loaded || !user) return [];
+    const t = this.t;
+    const active = user.team;
+    const list = this.list;
+    const item = (label: string, onclick: () => void, extra: { current?: boolean; note?: string; avatar?: string } = {}) =>
+      el("button", { role: "menuitem", type: "button", class: "inid-menu-item", "aria-current": extra.current ? "true" : null, onclick },
+        extra.avatar !== undefined && el("span", { class: "inid-avatar inid-square", "aria-hidden": "true" }, extra.avatar),
+        el("span", {}, label),
+        extra.note && el("small", {}, extra.note)
+      );
+    const enter = (id: string | null) => () => void this.act(() => switchTeam(this.apiPath, id));
+    const take = (path: string) => () => void this.act(async () => switchTeam(this.apiPath, ((await call(this.apiPath, path, "POST")) as { team: { id: string } }).team.id));
+    const personal = !this.hasAttribute("hide-personal") && !list?.settings.required;
+    const menu =
+      this.open &&
+      el("div", { class: "inid-menu", role: "menu" },
+        el("p", { class: "inid-menu-label" }, t.teams),
+        personal && item(t.personal, enter(null), { current: !active, avatar: initials(user) }),
+        ...(list?.teams ?? []).map((x) => item(x.name, enter(x.id), { current: x.id === active?.id, avatar: teamInitial(x.name) })),
+        Boolean(list?.invitations.length || list?.joinable.length) && el("p", { class: "inid-menu-label" }, t.invitations),
+        ...(list?.invitations ?? []).map((i) => item(i.team.name, take(`teams/invitations/${encodeURIComponent(i.id)}/accept`), { note: t.accept, avatar: teamInitial(i.team.name) })),
+        ...(list?.joinable ?? []).map((x) => item(x.name, take(`teams/${encodeURIComponent(x.id)}/join`), { note: `${t.join} · ${t.fromDomain}`, avatar: teamInitial(x.name) })),
+        el("hr"),
+        active && item(t.manageTeam, () => ((this.open = false), (this.dialog = "manage"), this.update())),
+        list?.settings.canCreate && item(t.createTeam, () => ((this.open = false), (this.dialog = "create"), this.update()))
+      );
+    const inner = { "api-path": this.getAttribute("api-path"), locale: this.getAttribute("locale"), inline: true };
+    const after = this.getAttribute("after-switch");
+    const dialog =
+      this.dialog &&
+      el("dialog", { class: "inid inid-dialog", "aria-label": this.dialog === "create" ? t.createTeam : t.manageTeam, onclose: () => ((this.dialog = null), this.update()) },
+        el("h2", {}, this.dialog === "create" ? t.createTeam : (active?.name ?? t.manageTeam)),
+        this.dialog === "create" ? el("inid-create-team", { ...inner, "after-create": after }) : el("inid-team-profile", { ...inner, "after-leave": after }),
+        el("form", { method: "dialog" }, el("button", { type: "submit", class: "inid-btn inid-quiet" }, t.close))
+      );
+    return [
+      style(),
+      el("div", { class: "inid inid-user" },
+        el("button", { type: "button", class: "inid-avatar-btn", part: "button", "aria-haspopup": "menu", "aria-expanded": String(this.open), "aria-label": t.switchTeam, onclick: () => ((this.open = !this.open), this.update()) },
+          el("span", { class: "inid-avatar inid-square", "aria-hidden": "true" }, active ? teamInitial(active.name) : initials(user)),
+          el("span", {}, active?.name ?? t.personal)
+        ),
+        this.error && el("p", { class: "inid-error", role: "alert" }, this.error),
+        menu,
+        dialog
+      ),
+    ];
+  }
+  protected rendered() {
+    if (this.dialog) this.root.querySelector<HTMLDialogElement>("dialog")?.showModal?.();
+  }
+}
+
+type Member = { userId: string; role: string; firstName: string | null; lastName: string | null; email: string | null };
+type Invitation = { id: string; email: string; role: string };
+
+// One team (the one in use, unless team-id says another): its name and image, its members and
+// their roles, invitations by email and changing or taking out members (for whoever runs it),
+// leaving it and deleting it. inline: without a card of its own. after-leave: where to go.
+class TeamProfileElement extends InIDElement {
+  static observedAttributes = [...InIDElement.observedAttributes, "team-id", "after-leave", "inline"];
+  private tab: "general" | "members" = "general";
+  private team: TeamItem | null = null;
+  private members: Member[] = [];
+  private invitations: Invitation[] = [];
+  private settings: TeamsList["settings"] | null = null;
+  private error: string | null = null;
+  private loadedFor: string | null = null;
+
+  private get teamId() {
+    return this.getAttribute("team-id") || this.session.user?.team?.id || null;
+  }
+  private get base() {
+    return `teams/${encodeURIComponent(this.teamId ?? "")}`;
+  }
+  private async load() {
+    const id = this.teamId;
+    if (!id) return;
+    this.loadedFor = id;
+    try {
+      this.settings = ((await call(this.apiPath, "teams")) as TeamsList).settings;
+      this.team = (await call(this.apiPath, this.base)) as TeamItem;
+      this.members = ((await call(this.apiPath, `${this.base}/members`)) as { members: Member[] }).members;
+      this.invitations = this.team.manages ? ((await call(this.apiPath, `${this.base}/invitations`)) as { invitations: Invitation[] }).invitations : [];
+    } catch (err) {
+      this.error = errorText(this.t, err);
+    }
+    this.update();
+  }
+  private run(fn: () => Promise<unknown>, after: () => unknown = () => this.load()) {
+    return async () => {
+      this.error = null;
+      try {
+        await fn();
+        await after();
+      } catch (err) {
+        this.error = errorText(this.t, err);
+        this.update();
+      }
+    };
+  }
+  protected key() {
+    if (this.session.loaded && this.teamId && this.teamId !== this.loadedFor) void this.load();
+    return JSON.stringify([this.session.loaded, this.teamId, this.tab, this.team, this.members, this.invitations, this.error, this.locale]);
+  }
+  protected view(): Node[] {
+    const t = this.t;
+    const css = style(`${CSS}:host{display:block}`);
+    const wrap = (...children: Child[]) =>
+      this.hasAttribute("inline") ? el("div", { class: "inid inid-list" }, ...children) : el("section", { class: "inid inid-card inid-profile inid-list", part: "card", "aria-label": this.team?.name ?? t.teams }, ...children);
+    if (!this.session.loaded) return [css];
+    if (!this.teamId) return [css, wrap(el("p", { class: "inid-muted" }, t.noTeam))];
+    const team = this.team;
+    if (!team) return [css, wrap(this.error ? el("p", { class: "inid-error", role: "alert" }, this.error) : el("div", { "aria-busy": "true", style: "min-height:60px" }))];
+    const me = this.session.user?.id;
+    const roles = this.settings?.roles ?? [];
+    const roleName = (key: string) => roles.find((r) => r.key === key)?.name ?? key;
+    const options = (selected?: string) => roles.map((r) => el("option", { value: r.key, selected: r.key === selected }, r.name));
+    const after = () => goOn(this.getAttribute("after-leave"));
+    const out = (path: string, method: string) => async () => {
+      await call(this.apiPath, path, method);
+      // Out of the team in use: back to their own account (another one where a team is required)
+      if (this.session.user?.team?.id === team.id) await switchTeam(this.apiPath, null).catch(() => {});
+    };
+    const tab = (key: "general" | "members", label: string) =>
+      el("button", { type: "button", role: "tab", "aria-selected": String(this.tab === key), class: "inid-tab", onclick: () => ((this.tab = key), this.update()) }, label);
+    const general: Child[] = [
+      team.manages
+        ? el("form", { onsubmit: (e: Event) => {
+            e.preventDefault();
+            const form = new FormData(e.target as HTMLFormElement);
+            void this.run(() => call(this.apiPath, this.base, "PATCH", { name: form.get("name"), imageUrl: String(form.get("imageUrl") || "") || null }))();
+          } },
+            el("div", { class: "inid-row" }, el("input", { class: "inid-field", name: "name", value: team.name, required: true, maxlength: "80", "aria-label": t.teamName })),
+            el("div", { class: "inid-row" }, el("input", { class: "inid-field", name: "imageUrl", type: "url", value: team.imageUrl ?? "", placeholder: t.imageUrl, "aria-label": t.imageUrl }), el("button", { type: "submit", class: "inid-btn" }, t.save))
+          )
+        : el("p", { class: "inid-muted" }, `${t.role}: ${roleName(team.role)}`),
+      el("div", { class: "inid-row" },
+        el("button", { type: "button", class: "inid-btn inid-quiet", onclick: () => confirm(fill(t.confirmLeave, { team: team.name })) && void this.run(out(`${this.base}/leave`, "POST"), after)() }, t.leave),
+        team.manages && el("button", { type: "button", class: "inid-btn inid-quiet", onclick: () => confirm(fill(t.confirmDelete, { team: team.name })) && void this.run(out(this.base, "DELETE"), after)() }, t.deleteTeam)
+      ),
+    ];
+    const nameOf = (m: Member) => [m.firstName, m.lastName].filter(Boolean).join(" ") || m.email || m.userId;
+    const memberPath = (m: Member) => `${this.base}/members/${encodeURIComponent(m.userId)}`;
+    const people: Child[] = [
+      el("ul", {}, ...this.members.map((m) =>
+        el("li", {},
+          el("span", {}, el("b", {}, nameOf(m)), el("small", {}, m.userId === me ? t.you : (m.email ?? ""))),
+          el("span", {},
+            ...(team.manages && m.userId !== me
+              ? [
+                  el("select", { class: "inid-field", "aria-label": t.role, onchange: (e: Event) => void this.run(() => call(this.apiPath, memberPath(m), "PATCH", { role: (e.target as HTMLSelectElement).value }))() }, ...options(m.role)),
+                  el("button", { type: "button", class: "inid-btn inid-quiet", onclick: () => void this.run(() => call(this.apiPath, memberPath(m), "DELETE"))() }, t.remove),
+                ]
+              : [el("em", {}, roleName(m.role))])
+          )
+        )
+      )),
+      team.manages &&
+        el("form", { class: "inid-row", onsubmit: (e: Event) => {
+          e.preventDefault();
+          const form = e.target as HTMLFormElement;
+          const data = new FormData(form);
+          void this.run(() => call(this.apiPath, `${this.base}/invitations`, "POST", { email: data.get("email"), role: data.get("role") }))();
+        } },
+          el("input", { class: "inid-field", name: "email", type: "email", required: true, placeholder: t.inviteEmail, "aria-label": t.inviteEmail }),
+          el("select", { class: "inid-field", name: "role", "aria-label": t.role }, ...options(this.settings?.defaultRole)),
+          el("button", { type: "submit", class: "inid-btn" }, t.invite)
+        ),
+      this.invitations.length > 0 && el("h3", {}, t.pending),
+      this.invitations.length > 0 &&
+        el("ul", {}, ...this.invitations.map((i) =>
+          el("li", {},
+            el("span", {}, el("b", {}, i.email), el("small", {}, roleName(i.role))),
+            el("span", {}, el("button", { type: "button", class: "inid-btn inid-quiet", onclick: () => void this.run(() => call(this.apiPath, `${this.base}/invitations/${encodeURIComponent(i.id)}`, "DELETE"))() }, t.revoke))
+          )
+        )),
+    ];
+    return [
+      css,
+      wrap(
+        el("div", { class: "inid-tabs", role: "tablist" }, tab("general", t.general), tab("members", t.members)),
+        this.error && el("p", { class: "inid-error", role: "alert" }, this.error),
+        ...(this.tab === "general" ? general : people)
+      ),
+    ];
+  }
+}
+
 // ---------- registration ----------
 // Safe to import twice (two bundles, a script tag and a module): the first definition stays
 const ELEMENTS: Record<string, CustomElementConstructor> = {
@@ -869,6 +1340,9 @@ const ELEMENTS: Record<string, CustomElementConstructor> = {
   "inid-signed-in": SignedInElement,
   "inid-signed-out": SignedOutElement,
   "inid-protect": ProtectElement,
+  "inid-team-switcher": TeamSwitcherElement,
+  "inid-team-profile": TeamProfileElement,
+  "inid-create-team": CreateTeamElement,
 };
 if (typeof customElements !== "undefined") {
   for (const [name, element] of Object.entries(ELEMENTS)) if (!customElements.get(name)) customElements.define(name, element);
@@ -884,4 +1358,7 @@ export {
   SignedInElement,
   SignedOutElement,
   ProtectElement,
+  TeamSwitcherElement,
+  TeamProfileElement,
+  CreateTeamElement,
 };

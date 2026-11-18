@@ -22,11 +22,38 @@ export interface InIDUser {
   permissions: string[];
   // What the app keeps public about this person (its metadata)
   publicMetadata: Record<string, unknown>;
+  // The team they work in now (apps with teams), with their role there; null: none
+  team: InIDTeam | null;
 }
 
-export type AccessCheck = { role?: string; permission?: string };
+// The person's active team, as their session says it
+export interface InIDTeam {
+  id: string;
+  slug: string;
+  name: string;
+  role: string;
+  permissions: string[];
+}
+
+// One of their teams, as the app's server lists them (useTeams)
+export interface TeamItem {
+  id: string;
+  name: string;
+  slug: string;
+  imageUrl: string | null;
+  role: string;
+  permissions: string[];
+  // Their role there lets them run it (invite, change roles, rename, delete)
+  manages: boolean;
+}
+
+// role: an app role; teamRole: a role in the active team; permission: from either
+export type AccessCheck = { role?: string; permission?: string; teamRole?: string };
 const allows = (user: InIDUser | null, check: AccessCheck) =>
-  Boolean(user) && (!check.role || (user!.roles ?? []).includes(check.role)) && (!check.permission || (user!.permissions ?? []).includes(check.permission));
+  Boolean(user) &&
+  (!check.role || (user!.roles ?? []).includes(check.role)) &&
+  (!check.teamRole || user!.team?.role === check.teamRole) &&
+  (!check.permission || (user!.permissions ?? []).includes(check.permission) || Boolean(user!.team?.permissions.includes(check.permission)));
 
 export type Locale = "es" | "en" | "pt";
 
@@ -54,6 +81,43 @@ const TEXTS = {
     hoursAgo: "hace {n} h",
     close: "Listo",
     browser: "Navegador",
+    teams: "Equipos",
+    switchTeam: "Cambiar de equipo",
+    personal: "Cuenta personal",
+    createTeam: "Crear equipo",
+    createTeamLead: "Un espacio para trabajar con otras personas. Tú quedas como su administrador.",
+    teamName: "Nombre del equipo",
+    create: "Crear",
+    manageTeam: "Administrar equipo",
+    invitations: "Invitaciones",
+    accept: "Aceptar",
+    decline: "Rechazar",
+    join: "Unirte",
+    fromDomain: "De tu dominio",
+    invitedAs: "Te invitaron como {role}",
+    general: "General",
+    members: "Miembros",
+    invite: "Invitar",
+    inviteEmail: "correo@empresa.com",
+    pending: "Invitaciones pendientes",
+    revoke: "Quitar",
+    remove: "Sacar",
+    leave: "Salir del equipo",
+    deleteTeam: "Eliminar equipo",
+    confirmDelete: "¿Eliminar {team}? Sus miembros dejan de verlo y no se puede deshacer.",
+    confirmLeave: "¿Salir de {team}?",
+    save: "Guardar",
+    imageUrl: "Imagen (una dirección https)",
+    you: "Tú",
+    noTeam: "Aún no estás en un equipo.",
+    role: "Rol",
+    failed: "Algo falló. Inténtalo de nuevo.",
+    not_allowed: "Tu rol en este equipo no lo permite.",
+    last_admin: "El equipo necesita al menos un administrador.",
+    invalid_email: "Revisa el correo.",
+    too_many_teams: "Ya estás en el máximo de equipos.",
+    invalid_team: "Revisa el nombre del equipo.",
+    team_creation_disabled: "En esta app no puedes crear equipos.",
   },
   en: {
     continue: "Continue with InID",
@@ -78,6 +142,43 @@ const TEXTS = {
     hoursAgo: "{n} h ago",
     close: "Done",
     browser: "Browser",
+    teams: "Teams",
+    switchTeam: "Switch team",
+    personal: "Personal account",
+    createTeam: "Create team",
+    createTeamLead: "A space to work with other people. You'll be its admin.",
+    teamName: "Team name",
+    create: "Create",
+    manageTeam: "Manage team",
+    invitations: "Invitations",
+    accept: "Accept",
+    decline: "Decline",
+    join: "Join",
+    fromDomain: "From your domain",
+    invitedAs: "You were invited as {role}",
+    general: "General",
+    members: "Members",
+    invite: "Invite",
+    inviteEmail: "name@company.com",
+    pending: "Pending invitations",
+    revoke: "Revoke",
+    remove: "Remove",
+    leave: "Leave team",
+    deleteTeam: "Delete team",
+    confirmDelete: "Delete {team}? Its members lose access and it can't be undone.",
+    confirmLeave: "Leave {team}?",
+    save: "Save",
+    imageUrl: "Image (an https address)",
+    you: "You",
+    noTeam: "You're not in a team yet.",
+    role: "Role",
+    failed: "Something went wrong. Try again.",
+    not_allowed: "Your role in this team doesn't allow it.",
+    last_admin: "The team needs at least one admin.",
+    invalid_email: "Check the email.",
+    too_many_teams: "You're already in as many teams as allowed.",
+    invalid_team: "Check the team's name.",
+    team_creation_disabled: "This app doesn't let you create teams.",
   },
   pt: {
     continue: "Continuar com InID",
@@ -102,6 +203,43 @@ const TEXTS = {
     hoursAgo: "há {n} h",
     close: "Pronto",
     browser: "Navegador",
+    teams: "Equipes",
+    switchTeam: "Trocar de equipe",
+    personal: "Conta pessoal",
+    createTeam: "Criar equipe",
+    createTeamLead: "Um espaço para trabalhar com outras pessoas. Você fica como administrador.",
+    teamName: "Nome da equipe",
+    create: "Criar",
+    manageTeam: "Gerenciar equipe",
+    invitations: "Convites",
+    accept: "Aceitar",
+    decline: "Recusar",
+    join: "Entrar",
+    fromDomain: "Do seu domínio",
+    invitedAs: "Você foi convidado como {role}",
+    general: "Geral",
+    members: "Membros",
+    invite: "Convidar",
+    inviteEmail: "nome@empresa.com",
+    pending: "Convites pendentes",
+    revoke: "Remover",
+    remove: "Tirar",
+    leave: "Sair da equipe",
+    deleteTeam: "Excluir equipe",
+    confirmDelete: "Excluir {team}? Seus membros perdem o acesso e não dá para desfazer.",
+    confirmLeave: "Sair de {team}?",
+    save: "Salvar",
+    imageUrl: "Imagem (um endereço https)",
+    you: "Você",
+    noTeam: "Você ainda não está em uma equipe.",
+    role: "Função",
+    failed: "Algo deu errado. Tente de novo.",
+    not_allowed: "Sua função nesta equipe não permite.",
+    last_admin: "A equipe precisa de pelo menos um administrador.",
+    invalid_email: "Confira o e-mail.",
+    too_many_teams: "Você já está no máximo de equipes.",
+    invalid_team: "Confira o nome da equipe.",
+    team_creation_disabled: "Este app não permite criar equipes.",
   },
 };
 type Texts = (typeof TEXTS)["es"];
@@ -197,6 +335,8 @@ interface InIDState {
   signOut: (returnTo?: string) => Promise<void>;
   // Asks the server again (after something changed)
   reload: () => Promise<void>;
+  // Works in another team (null: their own account): the server renews the session with it
+  setActiveTeam: (teamId: string | null) => Promise<void>;
   accountUrl: string;
   apiPath: string;
   locale: Locale;
@@ -225,11 +365,25 @@ const CSS = `
 .inid-card h2{margin:16px 0 6px;font-size:20px;font-weight:650;letter-spacing:-.01em}
 .inid-card p{margin:0 0 20px;font-size:14px;line-height:1.5;color:var(--inid-muted)}
 .inid-frame{display:block;width:100%;border:0;overflow:hidden;margin-top:8px;background:transparent;color-scheme:normal;transition:height .15s ease}
-.inid-sessions ul{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
-.inid-sessions li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--inid-line);border-radius:var(--inid-radius)}
-.inid-sessions li b{display:block;font-size:14px;font-weight:600}
-.inid-sessions li small{display:block;font-size:12.5px;color:var(--inid-muted)}
-.inid-sessions li em{font-style:normal;font-size:12.5px;color:var(--inid-muted);white-space:nowrap}
+.inid-sessions ul,.inid-list ul{list-style:none;margin:0 0 12px;padding:0;display:grid;gap:8px}
+.inid-sessions li,.inid-list li{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid var(--inid-line);border-radius:var(--inid-radius)}
+.inid-sessions li b,.inid-list li b{display:block;font-size:14px;font-weight:600}
+.inid-sessions li small,.inid-list li small{display:block;font-size:12.5px;color:var(--inid-muted)}
+.inid-sessions li em,.inid-list li em{font-style:normal;font-size:12.5px;color:var(--inid-muted);white-space:nowrap}
+.inid-list li>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}
+.inid-list li>span:last-child{display:flex;gap:6px;align-items:center;flex:none}
+.inid-list h3{margin:16px 0 8px;font-size:13px;font-weight:650}
+.inid-field{width:100%;min-height:40px;padding:0 12px;border:1px solid var(--inid-line);border-radius:calc(var(--inid-radius) - 2px);background:var(--inid-bg);color:var(--inid-ink);font:400 14px/1.2 var(--inid-font,inherit)}
+.inid-field:focus{outline:2px solid var(--inid-ink);outline-offset:1px}
+select.inid-field{width:auto;min-height:32px;padding:0 8px;font-size:13px}
+.inid-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}.inid-row input.inid-field{flex:1;min-width:160px}
+.inid-error{color:#c4231a;font-size:13px;margin:0 0 12px}
+.inid-menu-label{margin:8px 8px 4px;font-size:11.5px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--inid-muted)}
+.inid-menu-item[aria-current="true"]{font-weight:650}
+.inid-menu-item small{margin-left:auto;padding-left:8px;font-size:12px;color:var(--inid-muted)}
+.inid-menu-item .inid-avatar,.inid-avatar-btn .inid-avatar.inid-square{width:24px;height:24px;font-size:11px;margin-right:8px;flex:none}
+.inid-avatar.inid-square{border-radius:calc(var(--inid-radius) - 4px)}
+.inid-menu hr{border:0;border-top:1px solid var(--inid-line);margin:4px 0}
 .inid-sessions[aria-busy]{min-height:60px}
 .inid-btn.inid-quiet{background:var(--inid-bg);color:var(--inid-ink);border-color:var(--inid-line);min-height:32px;padding:0 12px;font-size:13px}
 .inid-profile{max-width:560px}
@@ -266,6 +420,19 @@ const Mark = () =>
     h("rect", { x: 24, y: 50, width: 20, height: 20, rx: 3, fill: "#fff" }),
     h("rect", { x: 56, y: 30, width: 20, height: 20, rx: 3, fill: "#c6ff3d" })
   );
+
+// The app's InID routes, as JSON; what InID refused comes back as an error with its code
+async function call(apiPath: string, path: string, method = "GET", body?: unknown) {
+  const res = await fetch(`${apiPath}/${path}`, {
+    method,
+    credentials: "same-origin",
+    cache: "no-store",
+    ...(body !== undefined && { headers: { "content-type": "application/json" }, body: JSON.stringify(body) }),
+  });
+  const data = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+  if (!res.ok) throw Object.assign(new Error(String(data.error || "failed")), { code: String(data.error || "failed") });
+  return data;
+}
 
 const initials = (user: InIDUser | null) =>
   ((user?.firstName?.[0] || "") + (user?.lastName?.[0] || "") || user?.email?.[0] || "·").toUpperCase();
@@ -314,6 +481,10 @@ export function InIDProvider({ children, user: given, apiPath = "/api/inid", loc
       t: TEXTS[locale] ?? TEXTS.es,
       appearance: shared,
       reload,
+      setActiveTeam: async (teamId) => {
+        const body = (await call(apiPath, "team", "POST", { teamId })) as { user: InIDUser | null };
+        setState((s) => ({ ...s, user: body.user }));
+      },
       signIn: (returnTo, entrance) => {
         const back = returnTo ?? `${location.pathname}${location.search}`;
         location.assign(`${apiPath}/signin?${new URLSearchParams({ return_to: back, ui_locales: locale, ...(entrance && { entrance }) })}`);
@@ -337,9 +508,65 @@ export function useUser() {
 
 export function useAuth() {
   const { isLoaded, isSignedIn, user, signIn, signOut, reload } = useInID("useAuth()");
-  // has({ role: "admin" }), has({ permission: "facturas:ver" })
+  // has({ role: "admin" }), has({ teamRole: "admin" }), has({ permission: "facturas:ver" })
   const has = useCallback((check: AccessCheck) => allows(user, check), [user]);
-  return { isLoaded, isSignedIn, userId: user?.id ?? null, has, signIn, signOut, reload };
+  return { isLoaded, isSignedIn, userId: user?.id ?? null, teamId: user?.team?.id ?? null, has, signIn, signOut, reload };
+}
+
+// The person's active team (null: none) and switching it
+export function useTeam() {
+  const { isLoaded, user, setActiveTeam } = useInID("useTeam()");
+  return { isLoaded, team: user?.team ?? null, setActive: setActiveTeam };
+}
+
+export interface TeamsState {
+  isLoaded: boolean;
+  // Their teams, the invitations to their email, and their email domain's team to join
+  teams: TeamItem[];
+  invitations: Array<{ id: string; team: { id: string; name: string; slug: string; imageUrl: string | null }; role: string; expiresAt: string }>;
+  joinable: Array<{ id: string; name: string; slug: string; imageUrl: string | null }>;
+  // What the app allows them: creating teams, and whether they must be in one
+  settings: { canCreate: boolean; required: boolean; maxPerUser: number; roles: Array<{ key: string; name: string }>; defaultRole: string } | null;
+  error: string | null;
+}
+
+// Everything about the person's teams, from the app's server (its InID routes, teams). Each
+// change switches to the team it's about (or out of it) and loads again.
+export function useTeams() {
+  const { apiPath, isSignedIn, user, setActiveTeam } = useInID("useTeams()");
+  const [state, setState] = useState<TeamsState>({ isLoaded: false, teams: [], invitations: [], joinable: [], settings: null, error: null });
+  const load = useCallback(async () => {
+    if (!isSignedIn) return setState((s) => ({ ...s, isLoaded: true }));
+    try {
+      const body = (await call(apiPath, "teams")) as unknown as Omit<TeamsState, "isLoaded" | "error">;
+      setState({ isLoaded: true, teams: body.teams ?? [], invitations: body.invitations ?? [], joinable: body.joinable ?? [], settings: body.settings ?? null, error: null });
+    } catch (err) {
+      setState((s) => ({ ...s, isLoaded: true, error: (err as { code?: string }).code || "failed" }));
+    }
+  }, [apiPath, isSignedIn]);
+  useEffect(() => void load(), [load]);
+  const then = async (teamId: string | null | undefined) => {
+    if (teamId !== undefined) await setActiveTeam(teamId);
+    await load();
+  };
+  const activeId = user?.team?.id ?? null;
+  return {
+    ...state,
+    reload: load,
+    setActive: setActiveTeam,
+    create: async (name: string) => {
+      const team = (await call(apiPath, "teams", "POST", { name })) as unknown as TeamItem;
+      await then(team.id);
+      return team;
+    },
+    accept: async (invitationId: string) => then(((await call(apiPath, `teams/invitations/${encodeURIComponent(invitationId)}/accept`, "POST")) as { team: { id: string } }).team.id),
+    decline: async (invitationId: string) => then((await call(apiPath, `teams/invitations/${encodeURIComponent(invitationId)}/decline`, "POST"), undefined)),
+    join: async (teamId: string) => then(((await call(apiPath, `teams/${encodeURIComponent(teamId)}/join`, "POST")) as { team: { id: string } }).team.id),
+    // Leaving or deleting the team in use: back to their own account (the server picks another
+    // one where teams are required)
+    leave: async (teamId: string) => then((await call(apiPath, `teams/${encodeURIComponent(teamId)}/leave`, "POST"), teamId === activeId ? null : undefined)),
+    remove: async (teamId: string) => then((await call(apiPath, `teams/${encodeURIComponent(teamId)}`, "DELETE"), teamId === activeId ? null : undefined)),
+  };
 }
 
 // ---------- what shows by who is here ----------
@@ -355,10 +582,10 @@ export function SignedOut({ children }: { children?: ReactNode }) {
 
 // Shows its children only to someone with that role or permission; to anyone else, the
 // fallback. It hides; the app's server still checks (auth().has, or the proxy's rules).
-export function Protect({ role, permission, fallback = null, children }: AccessCheck & { fallback?: ReactNode; children?: ReactNode }) {
+export function Protect({ role, permission, teamRole, fallback = null, children }: AccessCheck & { fallback?: ReactNode; children?: ReactNode }) {
   const { isLoaded, user } = useInID("<Protect>");
   if (!isLoaded) return null;
-  return allows(user, { role, permission }) ? h("div", { style: { display: "contents" } }, children) : h("div", { style: { display: "contents" } }, fallback);
+  return allows(user, { role, permission, teamRole }) ? h("div", { style: { display: "contents" } }, children) : h("div", { style: { display: "contents" } }, fallback);
 }
 
 // ---------- buttons ----------
@@ -594,5 +821,238 @@ export function UserButton({ showName = false, signOutReturnTo }: { showName?: b
           h("form", { method: "dialog" }, h("button", { type: "submit", className: "inid-btn inid-wide" }, t.close))
         )
       : null
+  );
+}
+
+// ---------- teams ----------
+// What a team change goes on to: a path or address, a function, or (by default) the page
+// again, so whatever the server rendered for the old team is drawn for the new one
+type After = string | (() => void);
+const goOn = (after?: After) => (typeof after === "function" ? after() : after ? location.assign(after) : location.reload());
+const errorText = (t: Texts, err: unknown) => (t as Record<string, string>)[(err as { code?: string }).code ?? ""] ?? t.failed;
+const teamInitial = (name: string | undefined) => (name?.trim()[0] || "·").toUpperCase();
+type Submit = { preventDefault(): void; currentTarget: HTMLFormElement };
+
+// A new team: its name (InID makes the address-like slug), the person its admin; then the
+// session works in it. inline: inside something of the app's (a dialog), without a card of its own
+export function CreateTeam({ afterCreate, inline = false, className }: { afterCreate?: After; inline?: boolean; className?: string }) {
+  const { apiPath, setActiveTeam, t } = useInID("<CreateTeam>");
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState(false);
+  const submit = async (e: Submit) => {
+    e.preventDefault();
+    const name = String(new FormData(e.currentTarget).get("name") || "");
+    setBusy(true);
+    setError(null);
+    try {
+      const team = (await call(apiPath, "teams", "POST", { name })) as unknown as TeamItem;
+      await setActiveTeam(team.id);
+      goOn(afterCreate);
+    } catch (err) {
+      setError(errorText(t, err));
+      setBusy(false);
+    }
+  };
+  const body = [
+    h("p", { key: "lead", className: "inid-muted" }, t.createTeamLead),
+    h("form", { key: "form", className: "inid-row", onSubmit: submit },
+      h("input", { className: "inid-field", name: "name", required: true, maxLength: 80, placeholder: t.teamName, "aria-label": t.teamName, autoComplete: "organization" }),
+      h("button", { type: "submit", className: "inid-btn", disabled: busy }, t.create)
+    ),
+    error ? h("p", { key: "error", className: "inid-error", role: "alert" }, error) : null,
+  ];
+  if (inline) return h("div", { className: `inid${className ? ` ${className}` : ""}` }, ...body);
+  return h("section", { className: `inid inid-card${className ? ` ${className}` : ""}`, "aria-label": t.createTeam }, h("h2", { style: { marginTop: 0 } }, t.createTeam), ...body);
+}
+
+// The person's teams, in a corner: the one in use, the others to switch to, their own account
+// (where the app allows working without a team), invitations to accept, their domain's team
+// to join, and creating or managing one
+export function TeamSwitcher({ afterSwitch, hidePersonal = false }: { afterSwitch?: After; hidePersonal?: boolean }) {
+  const { isLoaded, user, setActiveTeam, t } = useInID("<TeamSwitcher>");
+  const teams = useTeams();
+  const [open, setOpen] = useState(false);
+  const [dialog, setDialog] = useState<"create" | "manage" | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+  const box = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    if (dialog) box.current?.showModal?.();
+  }, [dialog]);
+  useEffect(() => {
+    if (!open) return;
+    const away = (e: Event) => {
+      if (!root.current?.contains(e.target as Node)) setOpen(false);
+    };
+    const keys = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setOpen(false);
+    };
+    document.addEventListener("mousedown", away);
+    document.addEventListener("keydown", keys);
+    return () => {
+      document.removeEventListener("mousedown", away);
+      document.removeEventListener("keydown", keys);
+    };
+  }, [open]);
+  if (!isLoaded || !user) return null;
+  const active = user.team;
+  const act = async (run: () => Promise<unknown>) => {
+    setOpen(false);
+    setError(null);
+    try {
+      await run();
+      goOn(afterSwitch);
+    } catch (err) {
+      setError(errorText(t, err));
+    }
+  };
+  const item = (key: string, label: string, onClick: () => void, extra: { current?: boolean; note?: string; avatar?: string } = {}) =>
+    h("button", { key, role: "menuitem", type: "button", className: "inid-menu-item", "aria-current": extra.current ? "true" : undefined, onClick },
+      extra.avatar !== undefined ? h("span", { className: "inid-avatar inid-square", "aria-hidden": true }, extra.avatar) : null,
+      h("span", null, label),
+      extra.note ? h("small", null, extra.note) : null
+    );
+  const personal = !hidePersonal && !teams.settings?.required;
+  return h(
+    "div",
+    { className: "inid inid-user", ref: root },
+    h("button", { type: "button", className: "inid-avatar-btn", "aria-haspopup": "menu", "aria-expanded": open, "aria-label": t.switchTeam, onClick: () => setOpen(!open) },
+      h("span", { className: "inid-avatar inid-square", "aria-hidden": true }, active ? teamInitial(active.name) : initials(user)),
+      h("span", null, active?.name ?? t.personal)
+    ),
+    error ? h("p", { className: "inid-error", role: "alert" }, error) : null,
+    open
+      ? h("div", { className: "inid-menu", role: "menu" },
+          h("p", { className: "inid-menu-label" }, t.teams),
+          personal ? item("personal", t.personal, () => void act(() => setActiveTeam(null)), { current: !active, avatar: initials(user) }) : null,
+          ...teams.teams.map((x) => item(x.id, x.name, () => void act(() => setActiveTeam(x.id)), { current: x.id === active?.id, avatar: teamInitial(x.name) })),
+          teams.invitations.length || teams.joinable.length ? h("p", { className: "inid-menu-label" }, t.invitations) : null,
+          ...teams.invitations.map((i) => item(i.id, i.team.name, () => void act(() => teams.accept(i.id)), { note: t.accept, avatar: teamInitial(i.team.name) })),
+          ...teams.joinable.map((x) => item(`join-${x.id}`, x.name, () => void act(() => teams.join(x.id)), { note: `${t.join} · ${t.fromDomain}`, avatar: teamInitial(x.name) })),
+          h("hr"),
+          active ? item("manage", t.manageTeam, () => (setOpen(false), setDialog("manage"))) : null,
+          teams.settings?.canCreate ? item("create", t.createTeam, () => (setOpen(false), setDialog("create"))) : null
+        )
+      : null,
+    dialog
+      ? h("dialog", { ref: box, className: "inid inid-dialog", "aria-label": dialog === "create" ? t.createTeam : t.manageTeam, onClose: () => setDialog(null) },
+          h("h2", null, dialog === "create" ? t.createTeam : (active?.name ?? t.manageTeam)),
+          dialog === "create" ? h(CreateTeam, { inline: true, afterCreate: afterSwitch }) : h(TeamProfile, { inline: true, afterLeave: afterSwitch }),
+          h("form", { method: "dialog" }, h("button", { type: "submit", className: "inid-btn inid-quiet" }, t.close))
+        )
+      : null
+  );
+}
+
+type Member = { userId: string; role: string; firstName: string | null; lastName: string | null; email: string | null };
+type Invitation = { id: string; email: string; role: string; status: string };
+
+// One team (the one in use, unless teamId says another): its name and image, its members with
+// their roles, inviting by email and changing or taking out members (for whoever runs it),
+// leaving it, and deleting it. inline: inside something of the app's, without a card of its own
+export function TeamProfile({ teamId, inline = false, className, afterLeave }: { teamId?: string; inline?: boolean; className?: string; afterLeave?: After }) {
+  const { apiPath, user, t } = useInID("<TeamProfile>");
+  const { settings, leave, remove } = useTeams();
+  const id = teamId ?? user?.team?.id ?? null;
+  const [tab, setTab] = useState<"general" | "members">("general");
+  const [team, setTeam] = useState<TeamItem | null>(null);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const base = id ? `teams/${encodeURIComponent(id)}` : "";
+  const load = useCallback(async () => {
+    if (!base) return;
+    try {
+      const found = (await call(apiPath, base)) as unknown as TeamItem;
+      setTeam(found);
+      setMembers(((await call(apiPath, `${base}/members`)) as { members: Member[] }).members);
+      setInvitations(found.manages ? ((await call(apiPath, `${base}/invitations`)) as { invitations: Invitation[] }).invitations : []);
+    } catch (err) {
+      setError(errorText(t, err));
+    }
+  }, [apiPath, base, t]);
+  useEffect(() => void load(), [load]);
+  const run = (fn: () => Promise<unknown>, after: () => unknown = load) => async () => {
+    setError(null);
+    try {
+      await fn();
+      await after();
+    } catch (err) {
+      setError(errorText(t, err));
+    }
+  };
+  const roleName = (key: string) => settings?.roles.find((r) => r.key === key)?.name ?? key;
+  const roles = settings?.roles ?? [];
+  const wrap = (...children: ReactNode[]) =>
+    inline
+      ? h("div", { className: `inid inid-list${className ? ` ${className}` : ""}` }, ...children)
+      : h("section", { className: `inid inid-card inid-profile inid-list${className ? ` ${className}` : ""}`, "aria-label": team?.name ?? t.teams }, ...children);
+  if (!id) return wrap(h("p", { className: "inid-muted" }, t.noTeam));
+  if (!team) return wrap(error ? h("p", { className: "inid-error", role: "alert" }, error) : h("div", { "aria-busy": true, style: { minHeight: 60 } }));
+  const tabButton = (key: "general" | "members", label: string) => h("button", { key, type: "button", role: "tab", "aria-selected": tab === key, className: "inid-tab", onClick: () => setTab(key) }, label);
+  const nameOf = (m: Member) => [m.firstName, m.lastName].filter(Boolean).join(" ") || m.email || m.userId;
+  const edit = (e: Submit) => {
+    e.preventDefault();
+    const form = new FormData(e.currentTarget);
+    void run(() => call(apiPath, base, "PATCH", { name: form.get("name"), imageUrl: String(form.get("imageUrl") || "") || null }))();
+  };
+  const invite = (e: Submit) => {
+    e.preventDefault();
+    const form = e.currentTarget;
+    const data = new FormData(form);
+    void run(async () => {
+      await call(apiPath, `${base}/invitations`, "POST", { email: data.get("email"), role: data.get("role") });
+      form.reset();
+    })();
+  };
+  const general = [
+    team.manages
+      ? h("form", { key: "edit", onSubmit: edit },
+          h("div", { className: "inid-row" }, h("input", { className: "inid-field", name: "name", defaultValue: team.name, required: true, maxLength: 80, "aria-label": t.teamName })),
+          h("div", { className: "inid-row" }, h("input", { className: "inid-field", name: "imageUrl", type: "url", defaultValue: team.imageUrl ?? "", placeholder: t.imageUrl, "aria-label": t.imageUrl }), h("button", { type: "submit", className: "inid-btn" }, t.save))
+        )
+      : h("p", { key: "role", className: "inid-muted" }, `${t.role}: ${roleName(team.role)}`),
+    h("div", { key: "actions", className: "inid-row" },
+      h("button", { type: "button", className: "inid-btn inid-quiet", onClick: () => confirm(fill(t.confirmLeave, { team: team.name })) && void run(() => leave(team.id), () => goOn(afterLeave))() }, t.leave),
+      team.manages ? h("button", { type: "button", className: "inid-btn inid-quiet", onClick: () => confirm(fill(t.confirmDelete, { team: team.name })) && void run(() => remove(team.id), () => goOn(afterLeave))() }, t.deleteTeam) : null
+    ),
+  ];
+  const memberPath = (m: Member) => `${base}/members/${encodeURIComponent(m.userId)}`;
+  const people = [
+    h("ul", { key: "members" }, ...members.map((m) =>
+      h("li", { key: m.userId },
+        h("span", null, h("b", null, nameOf(m)), h("small", null, m.userId === user?.id ? t.you : (m.email ?? ""))),
+        h("span", null,
+          ...(team.manages && m.userId !== user?.id
+            ? [
+                h("select", { key: "role", className: "inid-field", value: m.role, "aria-label": t.role, onChange: (e: { target: { value: string } }) => void run(() => call(apiPath, memberPath(m), "PATCH", { role: e.target.value }))() },
+                  ...roles.map((r) => h("option", { key: r.key, value: r.key }, r.name))),
+                h("button", { key: "out", type: "button", className: "inid-btn inid-quiet", onClick: () => void run(() => call(apiPath, memberPath(m), "DELETE"))() }, t.remove),
+              ]
+            : [h("em", { key: "role" }, roleName(m.role))])
+        )
+      )
+    )),
+    team.manages
+      ? h("form", { key: "invite", className: "inid-row", onSubmit: invite },
+          h("input", { className: "inid-field", name: "email", type: "email", required: true, placeholder: t.inviteEmail, "aria-label": t.inviteEmail }),
+          h("select", { className: "inid-field", name: "role", defaultValue: settings?.defaultRole, "aria-label": t.role }, ...roles.map((r) => h("option", { key: r.key, value: r.key }, r.name))),
+          h("button", { type: "submit", className: "inid-btn" }, t.invite)
+        )
+      : null,
+    invitations.length ? h("h3", { key: "pending-title" }, t.pending) : null,
+    invitations.length
+      ? h("ul", { key: "pending" }, ...invitations.map((i) =>
+          h("li", { key: i.id },
+            h("span", null, h("b", null, i.email), h("small", null, roleName(i.role))),
+            h("span", null, h("button", { type: "button", className: "inid-btn inid-quiet", onClick: () => void run(() => call(apiPath, `${base}/invitations/${encodeURIComponent(i.id)}`, "DELETE"))() }, t.revoke))
+          )
+        ))
+      : null,
+  ];
+  return wrap(
+    h("div", { key: "tabs", className: "inid-tabs", role: "tablist" }, tabButton("general", t.general), tabButton("members", t.members)),
+    error ? h("p", { key: "error", className: "inid-error", role: "alert" }, error) : null,
+    ...(tab === "general" ? general : people)
   );
 }
