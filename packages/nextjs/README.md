@@ -81,7 +81,7 @@ const { isSignedIn, user } = await auth();
 | `useAuth()` | `{ isLoaded, isSignedIn, userId, has({ role, permission }), signIn(returnTo?), signOut(returnTo?) }` |
 | `<Protect role="admin">` | Shows its children only to someone with that role or permission |
 
-Texts in Spanish, English and Portuguese (`locale="es" | "en" | "pt"`). Colors and corners are CSS variables on `.inid`: `--inid-ink`, `--inid-accent`, `--inid-radius`, `--inid-font`.
+Texts in Spanish, English and Portuguese (`locale="es" | "en" | "pt"`). Your logo, colors and texts are set in the InID panel (your app → Appearance); `<SignIn appearance={{ theme: "dark", variables: { colorPrimary: "#7c3aed" } }} />` changes them for a page (see [`@inid/react`](https://www.npmjs.com/package/@inid/react#appearance)). The card's colors and corners are CSS variables on `.inid`: `--inid-primary`, `--inid-ink`, `--inid-accent`, `--inid-radius`, `--inid-font`.
 
 ## Who may sign up
 

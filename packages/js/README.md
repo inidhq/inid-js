@@ -42,18 +42,29 @@ Every element also takes `api-path` and `locale` (`es`, `en` or `pt`); left out,
 
 | Element | Attributes | |
 |---|---|---|
-| `<inid-sign-in>` | `app-name`, `return-to`, `entrance`, `redirect` | The sign-in itself, in your page: phone, code, passkey and Google (which opens in the whole window). It is InID's form in a frame, so passkeys and codes never touch your app. Once signed in, it says who. `redirect` shows a single button to InID's page instead |
+| `<inid-sign-in>` | `app-name`, `return-to`, `entrance`, `redirect`, `appearance` | The sign-in itself, in your page: phone, code, passkey and Google (which opens in the whole window). It is InID's form in a frame, so passkeys and codes never touch your app. Once signed in, it says who. `redirect` shows a single button to InID's page instead |
 | `<inid-sign-in-button>` | `return-to`, `entrance` | A button to sign in; its children are the label |
 | `<inid-sign-out-button>` | `return-to` (default `/`) | A button to sign out; its children are the label |
 | `<inid-user-button>` | `show-name`, `sign-out-return-to` | Initials and a menu: their sessions, manage their InID, sign out |
-| `<inid-user-profile>` | | The person's page in your app: their InID account (data, passkeys) in a frame your app can't read, and their sessions |
+| `<inid-user-profile>` | `appearance` | The person's page in your app: their InID account (data, passkeys) in a frame your app can't read, and their sessions |
 | `<inid-user-sessions>` | | The person's sessions at your app, the current one marked; they end the others |
 | `<inid-signed-in>`, `<inid-signed-out>` | | Shows its children only then |
 | `<inid-protect>` | `role`, `permission` | Shows its children only to someone with that role or permission; to anyone else, the children with `slot="fallback"`. It hides; check on your server too |
 
 `entrance` is a door of your app with its own rules ("team": only your company's people), made in the InID panel.
 
-Colors and corners are CSS variables, set on the elements or any ancestor: `--inid-ink`, `--inid-muted`, `--inid-line`, `--inid-bg`, `--inid-accent`, `--inid-radius`, `--inid-font`. Buttons expose `::part(button)`, cards `::part(card)`.
+Colors and corners are CSS variables, set on the elements or any ancestor: `--inid-primary`, `--inid-ink`, `--inid-muted`, `--inid-line`, `--inid-bg`, `--inid-accent`, `--inid-radius`, `--inid-font`. Buttons expose `::part(button)`, cards `::part(card)`.
+
+### Appearance
+
+Your logo, name, colors, corners, theme, font and texts are set once in the InID panel (your app → Appearance) and apply everywhere InID shows itself for your app. From the page you can change some of it for one element, and the page wins over the panel: with `appearance` (JSON, the same as `@inid/react`'s prop) or with CSS custom properties on the element, which also reach InID's frame:
+
+```html
+<style>inid-sign-in { --inid-primary: #7c3aed; --inid-radius: 8px; --inid-bg: #fafafa; }</style>
+<inid-sign-in appearance='{"theme":"dark","variables":{"fontFamily":"rounded"}}'></inid-sign-in>
+```
+
+`theme`: `light`, `dark` or `auto`; `colorPrimary` and `colorBackground` (light theme only): `#rgb` or `#rrggbb`; `borderRadius`: `none`, `small`, `medium`, `large` or a length up to `32px` / `2rem`; `fontFamily`: `system`, `serif`, `rounded` or `mono`. The attribute wins over the CSS properties. Nothing else passes, and InID checks every value again, so no CSS of yours reaches its frame.
 
 ## Functions
 

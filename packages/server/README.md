@@ -68,6 +68,8 @@ The sign-in form and the rest are web components from [`@inid/js`](https://www.n
 
 `createInID({ publishableKey, secretKey, issuer, appUrl, apiPath, scope })` — all optional when set in the environment (`INID_PUBLISHABLE_KEY`, `INID_SECRET_KEY`, `INID_ISSUER`, `INID_APP_URL`). `apiPath` defaults to `/api/inid`. `appUrl` matters behind a proxy that changes the host.
 
+The sign-in route passes the page's `appearance` (from `<SignIn appearance>` or `<inid-sign-in appearance>`, up to 1 KB) on to InID, which checks it.
+
 Protect rules: a path (`"/dashboard"`, its subpaths too), a `RegExp`, or `{ path, role?, permission?, entrance? }`. `entrance` is a door of your app with its own sign-up rules (made in the panel: Sign-in → Who may sign up → Entrances).
 
 Docs: https://inid.co/docs/frameworks/ · MIT

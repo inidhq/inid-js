@@ -209,9 +209,9 @@ export function signOut(returnTo = "/"): Promise<void> {
 const CSS = `
 :host{display:inline-block}
 :host([hidden]){display:none}
-.inid{--i-ink:var(--inid-ink,#18181b);--i-muted:var(--inid-muted,#6b6b76);--i-line:var(--inid-line,#e6e6ea);--i-bg:var(--inid-bg,#fff);--i-hover:var(--inid-hover,#f4f4f6);--i-accent:var(--inid-accent,#c6ff3d);--i-radius:var(--inid-radius,10px);font-family:var(--inid-font,inherit);color:var(--i-ink);box-sizing:border-box}
+.inid{--i-ink:var(--inid-ink,#18181b);--i-muted:var(--inid-muted,#6b6b76);--i-line:var(--inid-line,#e6e6ea);--i-bg:var(--inid-bg,#fff);--i-hover:var(--inid-hover,#f4f4f6);--i-accent:var(--inid-accent,#c6ff3d);--i-radius:var(--inid-radius,10px);--i-primary:var(--inid-primary,var(--i-ink));--i-primary-ink:var(--inid-primary-ink,#fff);font-family:var(--inid-font,inherit);color:var(--i-ink);box-sizing:border-box}
 .inid *{box-sizing:border-box}
-.inid-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:0 16px;border-radius:calc(var(--i-radius) - 2px);border:1px solid var(--i-ink);background:var(--i-ink);color:#fff;font:600 14px/1 var(--inid-font,inherit);cursor:pointer;text-decoration:none}
+.inid-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:0 16px;border-radius:calc(var(--i-radius) - 2px);border:1px solid var(--i-primary);background:var(--i-primary);color:var(--i-primary-ink);font:600 14px/1 var(--inid-font,inherit);cursor:pointer;text-decoration:none}
 .inid-btn:hover{opacity:.9}.inid-btn:focus-visible,.inid-avatar-btn:focus-visible,.inid-menu-item:focus-visible{outline:2px solid var(--i-ink);outline-offset:2px}
 .inid-btn i{width:9px;height:9px;border-radius:2px;background:var(--i-accent);flex:none}
 .inid-btn.inid-wide{width:100%;min-height:44px;font-size:15px}
@@ -238,6 +238,8 @@ const CSS = `
 .inid-dialog form{margin:0}
 .inid-card .inid-foot{margin:18px 0 0;padding-top:14px;border-top:1px solid var(--i-line);font-size:12px;text-align:center}
 .inid-mark{display:block;width:32px;height:32px}
+.inid-logo{display:block;max-height:36px;max-width:200px;width:auto;height:auto}
+@media (prefers-color-scheme:dark){.inid-auto{--inid-bg:#111113;--inid-ink:#f5f5f7;--inid-muted:#a1a1a6;--inid-line:#3a3a3c;--inid-hover:#1c1c1e;--inid-primary:#c6ff3d;--inid-primary-ink:#111113}}
 .inid-user{position:relative;display:inline-block}
 .inid-avatar-btn{display:inline-flex;align-items:center;gap:8px;padding:2px;border:0;background:none;border-radius:999px;cursor:pointer;font:inherit;color:inherit}
 .inid-avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:999px;background:var(--i-ink);color:#fff;font:600 13px/1 var(--inid-font,inherit)}
@@ -288,6 +290,87 @@ const listenForHeight = (frame: () => HTMLIFrameElement | null | undefined, max:
 };
 
 const ALLOW = "publickey-credentials-get *; publickey-credentials-create *";
+
+// ---------- the app's look, from its page ----------
+// Over what the app set in InID's panel (Apariencia), for one element: its appearance attribute
+// (JSON, as @inid/react's prop) or CSS custom properties on it (inid-sign-in { --inid-primary:
+// #7c3aed; --inid-radius: 8px; --inid-bg: #fafafa }). The attribute wins. Only colors as #hex,
+// corners as a keyword or a length up to 32px and the system fonts pass; InID checks them again.
+export interface Appearance {
+  theme?: "light" | "dark" | "auto";
+  variables?: { colorPrimary?: string; colorBackground?: string; borderRadius?: string; fontFamily?: "system" | "serif" | "rounded" | "mono" };
+}
+const RADII: Record<string, string> = { none: "0px", small: "6px", medium: "12px", large: "20px" };
+const FONTS: Record<string, string> = {
+  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif',
+  serif: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
+  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+};
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+const LENGTH = /^\d{1,2}(?:\.\d{1,2})?(?:px|rem)$/;
+const THEMES = ["light", "dark", "auto"];
+const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
+export function cleanAppearance(a: unknown): Appearance | null {
+  if (!a || typeof a !== "object") return null;
+  const { theme, variables: v = {} } = a as { theme?: unknown; variables?: Record<string, unknown> };
+  const variables = Object.fromEntries(
+    Object.entries({
+      colorPrimary: HEX.test(str(v.colorPrimary)) ? str(v.colorPrimary) : undefined,
+      colorBackground: HEX.test(str(v.colorBackground)) ? str(v.colorBackground) : undefined,
+      borderRadius: str(v.borderRadius) in RADII || LENGTH.test(str(v.borderRadius)) ? str(v.borderRadius) : undefined,
+      fontFamily: str(v.fontFamily) in FONTS ? str(v.fontFamily) : undefined,
+    }).filter(([, x]) => x !== undefined)
+  );
+  const out: Appearance = { ...(typeof theme === "string" && THEMES.includes(theme) && { theme: theme as Appearance["theme"] }), ...(Object.keys(variables).length && { variables }) };
+  return Object.keys(out).length ? out : null;
+}
+// The element's look: its CSS custom properties, then its attribute over them
+export function appearanceOf(el: Element): Appearance | null {
+  let given: unknown = null;
+  try {
+    given = JSON.parse(el.getAttribute("appearance") || "null");
+  } catch {}
+  const css = typeof getComputedStyle === "function" ? getComputedStyle(el) : null;
+  const prop = (name: string) => css?.getPropertyValue(name).trim() || undefined;
+  const g = (given && typeof given === "object" ? given : {}) as Appearance;
+  return cleanAppearance({ theme: g.theme, variables: { colorPrimary: prop("--inid-primary"), colorBackground: prop("--inid-bg"), borderRadius: prop("--inid-radius"), ...g.variables } });
+}
+const expand = (hex: string) => (hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex).toLowerCase();
+const luminance = (hex: string) =>
+  [1, 3, 5].map((i) => parseInt(expand(hex).slice(i, i + 2), 16) / 255).map((s) => (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4)).reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+const inkOn = (hex: string) => ((luminance(hex) + 0.05) / 0.0556 >= 1.05 / (luminance(hex) + 0.05) ? "#111113" : "#ffffff");
+const DARK = { "--inid-bg": "#111113", "--inid-ink": "#f5f5f7", "--inid-muted": "#a1a1a6", "--inid-line": "#3a3a3c", "--inid-hover": "#1c1c1e", "--inid-primary": "#c6ff3d", "--inid-primary-ink": "#111113" };
+// The card's own custom properties for a look (the frame gets it from InID)
+const cardVars = (a: Appearance | null, fromInID: Record<string, string> = {}): Record<string, string> => {
+  const v = a?.variables ?? {};
+  return {
+    ...(a?.theme === "dark" ? DARK : {}),
+    ...fromInID,
+    ...(v.colorPrimary && { "--inid-primary": expand(v.colorPrimary), "--inid-primary-ink": inkOn(v.colorPrimary) }),
+    ...(v.colorBackground && a?.theme !== "dark" && { "--inid-bg": expand(v.colorBackground) }),
+    ...(v.borderRadius && { "--inid-radius": RADII[v.borderRadius] ?? v.borderRadius }),
+    ...(v.fontFamily && { "--inid-font": FONTS[v.fontFamily] }),
+  };
+};
+// What InID's frame says about the app's look: only these properties, values that can't end a declaration
+const BRAND_VARS = /^--inid-(primary|primary-ink|radius|font|bg|ink|muted|line|fill)$/;
+const BRAND_VALUE = /^[#\w\s,.'"()%-]{1,200}$/;
+type FrameBrand = { name: string | null; logo: string | null; theme: string | null; vars: Record<string, string> };
+export function readFrameBrand(data: unknown, origin: string): FrameBrand | null {
+  const d = data as { type?: unknown; name?: unknown; logo?: unknown; theme?: unknown; common?: unknown; light?: unknown } | null;
+  if (!d || d.type !== "inid:brand") return null;
+  const pick = (o: unknown) => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => BRAND_VARS.test(k) && typeof v === "string" && BRAND_VALUE.test(v)));
+  let logo: string | null = null;
+  try {
+    if (typeof d.logo === "string" && new URL(d.logo).origin === origin) logo = d.logo;
+  } catch {}
+  const theme = typeof d.theme === "string" && THEMES.includes(d.theme) ? d.theme : null;
+  return { name: typeof d.name === "string" ? d.name.slice(0, 60) : null, logo, theme, vars: { ...(theme === "dark" ? DARK : {}), ...pick(d.common), ...(theme === "light" ? pick(d.light) : {}) } };
+}
+const paint = (node: HTMLElement, vars: Record<string, string>) => {
+  for (const [k, v] of Object.entries(vars)) node.style.setProperty(k, v);
+};
 
 // ---------- the elements ----------
 // Without a DOM (an import during server rendering) the classes still exist; nothing registers
@@ -430,8 +513,11 @@ class SignOutButtonElement extends InIDElement {
 // It's InID's page in a frame, so passkeys, codes and InID's cookies never touch the app.
 // redirect: a single button to InID's page instead.
 class SignInElement extends InIDElement {
-  static observedAttributes = [...InIDElement.observedAttributes, "app-name", "return-to", "entrance", "redirect"];
+  static observedAttributes = [...InIDElement.observedAttributes, "app-name", "return-to", "entrance", "redirect", "appearance"];
   private height = 280;
+  // The app's look as InID's frame told it (its logo, name, colors)
+  private brand: FrameBrand | null = null;
+  private stopBrand: (() => void) | null = null;
   // Decided once: a second sign-in would replace the first (and inid_continue is used up)
   private src: string | null = null;
   private frame: HTMLIFrameElement | null = null;
@@ -439,12 +525,34 @@ class SignInElement extends InIDElement {
 
   connectedCallback() {
     this.stopListening ??= listenForHeight(() => this.frame, 4000, (height) => this.resize(height));
+    if (!this.stopBrand) {
+      const onMessage = (e: MessageEvent) => {
+        const own = this.frame?.contentWindow;
+        const brand = own && e.source === own ? readFrameBrand(e.data, e.origin) : null;
+        if (brand) this.applyBrand(brand);
+      };
+      addEventListener("message", onMessage);
+      this.stopBrand = () => removeEventListener("message", onMessage);
+    }
     super.connectedCallback();
   }
   disconnectedCallback() {
     this.stopListening?.();
-    this.stopListening = null;
+    this.stopBrand?.();
+    this.stopListening = this.stopBrand = null;
     super.disconnectedCallback();
+  }
+
+  // In place: drawing the card again would start the frame over
+  private applyBrand(brand: FrameBrand) {
+    this.brand = brand;
+    const card = this.root.querySelector<HTMLElement>(".inid-card");
+    if (!card) return;
+    paint(card, cardVars(appearanceOf(this), brand.vars));
+    card.classList.toggle("inid-auto", (appearanceOf(this)?.theme ?? brand.theme) === "auto");
+    if (brand.logo) card.querySelector(".inid-mark")?.replaceWith(el("img", { class: "inid-logo", src: brand.logo, alt: brand.name || "" }));
+    const h2 = card.querySelector("h2");
+    if (h2) h2.textContent = this.heading;
   }
 
   private resize(height: number) {
@@ -465,24 +573,27 @@ class SignInElement extends InIDElement {
     }
     const page = `${here.pathname}${here.search}`;
     const entrance = this.getAttribute("entrance");
+    const look = appearanceOf(this);
     return (this.src = `${this.apiPath}/signin?${new URLSearchParams({
       display: "embed",
       return_to: this.getAttribute("return-to") || page,
       page,
       ui_locales: this.locale,
       ...(entrance && { entrance }),
+      ...(look && { appearance: JSON.stringify(look) }),
     })}`);
   }
 
   private get heading() {
-    const app = this.getAttribute("app-name");
+    const app = this.getAttribute("app-name") || this.brand?.name;
     return app ? fill(this.t.title, { app }) : this.t.titlePlain;
   }
 
   protected key() {
     const { user } = this.session;
     const mode = user ? `in:${user.name || user.email || ""}` : this.hasAttribute("redirect") ? "redirect" : `frame:${this.chooseSrc()}`;
-    return `${mode}|${this.heading}|${this.locale}`;
+    // (the name InID's frame tells is put in place: drawn again, the frame would start over)
+    return `${mode}|${this.getAttribute("app-name") ?? ""}|${this.locale}`;
   }
 
   protected view() {
@@ -501,8 +612,16 @@ class SignInElement extends InIDElement {
     }
     return [
       style(`${CSS}:host{display:block}`),
-      el("section", { class: "inid inid-card", part: "card", "aria-label": title }, mark(), el("h2", {}, title), ...body, el("p", { class: "inid-foot" }, t.secured)),
+      this.look(el("section", { class: "inid inid-card", part: "card", "aria-label": title }, mark(), el("h2", {}, title), ...body, el("p", { class: "inid-foot" }, t.secured))),
     ];
+  }
+
+  private look(card: HTMLElement) {
+    const look = appearanceOf(this);
+    paint(card, cardVars(look, this.brand?.vars));
+    if ((look?.theme ?? this.brand?.theme) === "auto") card.classList.add("inid-auto");
+    if (this.brand?.logo) card.querySelector(".inid-mark")?.replaceWith(el("img", { class: "inid-logo", src: this.brand.logo, alt: this.brand.name || "" }));
+    return card;
   }
 }
 
@@ -585,6 +704,7 @@ const sessionsOf = (owner: HTMLElement) =>
 // ---------- the person's own page in the app ----------
 // Their account (InID's own page, in a frame the app can't read) and their sessions here.
 class UserProfileElement extends InIDElement {
+  static observedAttributes = [...InIDElement.observedAttributes, "appearance"];
   private tab: "account" | "sessions" = "account";
   private height = 560;
   private frame: HTMLIFrameElement | null = null;
@@ -615,7 +735,7 @@ class UserProfileElement extends InIDElement {
 
   protected key() {
     const { loaded, user, accountUrl } = this.session;
-    return `${loaded && Boolean(user)}|${this.tab}|${accountUrl}|${this.locale}`;
+    return `${loaded && Boolean(user)}|${this.tab}|${accountUrl}|${this.locale}|${this.getAttribute("appearance") ?? ""}`;
   }
 
   protected view(): Node[] {
@@ -627,12 +747,15 @@ class UserProfileElement extends InIDElement {
       el("button", { type: "button", role: "tab", "aria-selected": String(this.tab === key), class: "inid-tab", onclick: () => ((this.tab = key), this.update()) }, label);
     let body: Node[];
     if (this.tab === "account") {
-      this.frame = el("iframe", { src: accountUrl, title: t.profile, class: "inid-frame", style: `height:${this.height}px`, scrolling: "no", allow: ALLOW }) as HTMLIFrameElement;
+      // The app's look over the panel's, for Mi InID in its frame (appearance, CSS properties)
+      const look = appearanceOf(this);
+      const src = look ? `${accountUrl}${accountUrl.includes("?") ? "&" : "?"}${new URLSearchParams({ appearance: JSON.stringify(look) })}` : accountUrl;
+      this.frame = el("iframe", { src, title: t.profile, class: "inid-frame", style: `height:${this.height}px`, scrolling: "no", allow: ALLOW }) as HTMLIFrameElement;
       body = [el("p", { class: "inid-muted" }, t.profileLead), this.frame];
     } else body = [el("p", { class: "inid-muted" }, t.sessionsLead), sessionsOf(this)];
     return [
       style(`${CSS}:host{display:block}`),
-      el("section", { class: "inid inid-card inid-profile", part: "card", "aria-label": t.profile }, el("div", { class: "inid-tabs", role: "tablist" }, tab("account", t.profile), tab("sessions", t.sessions)), ...body),
+      ((card) => (paint(card, cardVars(appearanceOf(this))), card))(el("section", { class: `inid inid-card inid-profile${appearanceOf(this)?.theme === "auto" ? " inid-auto" : ""}`, part: "card", "aria-label": t.profile }, el("div", { class: "inid-tabs", role: "tablist" }, tab("account", t.profile), tab("sessions", t.sessions)), ...body)),
     ];
   }
 }

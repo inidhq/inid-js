@@ -279,6 +279,9 @@ export function createInIDAuth(config: InIDConfig) {
           const value = url.searchParams.get(passed);
           if (value) query.set(passed, value);
         }
+        // The page's changes to the app's look (<SignIn appearance={…} />): InID checks them
+        const appearance = url.searchParams.get("appearance");
+        if (appearance && appearance.length <= 1024) query.set("appearance", appearance);
         // In the page, someone InID knows still clicks to go in: never signed in by just
         // loading it (nor again right after signing out)
         if (embed) {

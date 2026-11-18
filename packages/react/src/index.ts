@@ -107,6 +107,86 @@ const TEXTS = {
 type Texts = (typeof TEXTS)["es"];
 const fill = (text: string, values: Record<string, string>) => text.replace(/\{(\w+)\}/g, (_, k) => values[k] ?? "");
 
+// ---------- the app's look, from its code ----------
+// Over what the app set in InID's panel (Apariencia), for this page:
+//   <SignIn appearance={{ theme: "dark", variables: { colorPrimary: "#7c3aed", borderRadius: "small" } }} />
+// Only these, and only values InID knows (colors as #hex, corners as a keyword or a length up
+// to 32px, the system fonts): InID checks them again and drops anything else.
+export interface Appearance {
+  theme?: "light" | "dark" | "auto";
+  variables?: {
+    colorPrimary?: string;
+    // The card's and the form's background, in the light theme
+    colorBackground?: string;
+    borderRadius?: "none" | "small" | "medium" | "large" | `${number}px` | `${number}rem`;
+    fontFamily?: "system" | "serif" | "rounded" | "mono";
+  };
+}
+const RADII: Record<string, string> = { none: "0px", small: "6px", medium: "12px", large: "20px" };
+const FONTS: Record<string, string> = {
+  system: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif',
+  serif: 'ui-serif, Georgia, Cambria, "Times New Roman", Times, serif',
+  rounded: 'ui-rounded, "SF Pro Rounded", "Arial Rounded MT Bold", "Nunito", system-ui, sans-serif',
+  mono: 'ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace',
+};
+const HEX = /^#(?:[0-9a-f]{3}|[0-9a-f]{6})$/i;
+const LENGTH = /^\d{1,2}(?:\.\d{1,2})?(?:px|rem)$/;
+const THEMES = ["light", "dark", "auto"];
+const cleanAppearance = (a?: Appearance | null): Appearance | null => {
+  if (!a) return null;
+  const v = a.variables ?? {};
+  const variables = Object.fromEntries(
+    Object.entries({
+      colorPrimary: typeof v.colorPrimary === "string" && HEX.test(v.colorPrimary.trim()) ? v.colorPrimary.trim() : undefined,
+      colorBackground: typeof v.colorBackground === "string" && HEX.test(v.colorBackground.trim()) ? v.colorBackground.trim() : undefined,
+      borderRadius: typeof v.borderRadius === "string" && (v.borderRadius in RADII || LENGTH.test(v.borderRadius)) ? v.borderRadius : undefined,
+      fontFamily: typeof v.fontFamily === "string" && v.fontFamily in FONTS ? v.fontFamily : undefined,
+    }).filter(([, x]) => x !== undefined)
+  );
+  const out: Appearance = { ...(a.theme && THEMES.includes(a.theme) && { theme: a.theme }), ...(Object.keys(variables).length && { variables }) };
+  return Object.keys(out).length ? out : null;
+};
+// What goes to InID's frame (?appearance=), merged over the provider's
+export const appearanceParam = (a?: Appearance | null) => {
+  const clean = cleanAppearance(a);
+  return clean ? JSON.stringify(clean) : null;
+};
+const merge = (base?: Appearance | null, over?: Appearance | null): Appearance | null =>
+  base || over ? { ...base, ...over, variables: { ...base?.variables, ...over?.variables } } : null;
+const expand = (hex: string) => (hex.length === 4 ? `#${[...hex.slice(1)].map((c) => c + c).join("")}` : hex).toLowerCase();
+const luminance = (hex: string) =>
+  [1, 3, 5].map((i) => parseInt(expand(hex).slice(i, i + 2), 16) / 255).map((s) => (s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4)).reduce((sum, c, i) => sum + c * [0.2126, 0.7152, 0.0722][i], 0);
+const inkOn = (hex: string) => ((luminance(hex) + 0.05) / 0.0556 >= 1.05 / (luminance(hex) + 0.05) ? "#111113" : "#ffffff");
+const DARK = { "--inid-bg": "#111113", "--inid-ink": "#f5f5f7", "--inid-muted": "#a1a1a6", "--inid-line": "#3a3a3c", "--inid-hover": "#1c1c1e", "--inid-primary": "#c6ff3d", "--inid-primary-ink": "#111113" };
+// The card's own custom properties for that look (the frame gets it from InID)
+const cardVars = (a: Appearance | null, fromInID: Record<string, string> = {}): Record<string, string> => {
+  const clean = cleanAppearance(a);
+  const v = clean?.variables ?? {};
+  return {
+    ...(clean?.theme === "dark" ? DARK : {}),
+    ...fromInID,
+    ...(v.colorPrimary && { "--inid-primary": expand(v.colorPrimary), "--inid-primary-ink": inkOn(v.colorPrimary) }),
+    ...(v.colorBackground && clean?.theme !== "dark" && { "--inid-bg": expand(v.colorBackground) }),
+    ...(v.borderRadius && { "--inid-radius": RADII[v.borderRadius] ?? v.borderRadius }),
+    ...(v.fontFamily && { "--inid-font": FONTS[v.fontFamily] }),
+  };
+};
+// What InID's frame says about the app's look: only these properties, values that can't end a declaration
+const BRAND_VARS = /^--inid-(primary|primary-ink|radius|font|bg|ink|muted|line|fill)$/;
+const BRAND_VALUE = /^[#\w\s,.'"()%-]{1,200}$/;
+export type FrameBrand = { name: string | null; logo: string | null; theme: string | null; vars: Record<string, string> };
+export const readFrameBrand = (data: unknown, origin: string): FrameBrand | null => {
+  const d = data as { type?: unknown; name?: unknown; logo?: unknown; theme?: unknown; common?: unknown; light?: unknown } | null;
+  if (!d || d.type !== "inid:brand") return null;
+  const pick = (o: unknown) => Object.fromEntries(Object.entries(o && typeof o === "object" ? o : {}).filter(([k, v]) => BRAND_VARS.test(k) && typeof v === "string" && BRAND_VALUE.test(v)));
+  let logo: string | null = null;
+  try {
+    if (typeof d.logo === "string" && new URL(d.logo).origin === origin) logo = d.logo;
+  } catch {}
+  const theme = typeof d.theme === "string" && THEMES.includes(d.theme) ? d.theme : null;
+  return { name: typeof d.name === "string" ? d.name.slice(0, 60) : null, logo, theme, vars: { ...(theme === "dark" ? DARK : {}), ...pick(d.common), ...(theme === "light" ? pick(d.light) : {}) } };
+};
+
 interface InIDState {
   isLoaded: boolean;
   isSignedIn: boolean;
@@ -121,6 +201,8 @@ interface InIDState {
   apiPath: string;
   locale: Locale;
   t: Texts;
+  // The look every component takes unless its own appearance says otherwise
+  appearance: Appearance | null;
 }
 
 const InIDContext = createContext<InIDState | null>(null);
@@ -135,7 +217,7 @@ const useInID = (component: string) => {
 const CSS = `
 .inid{--inid-ink:#18181b;--inid-muted:#6b6b76;--inid-line:#e6e6ea;--inid-bg:#fff;--inid-hover:#f4f4f6;--inid-accent:#c6ff3d;--inid-radius:10px;font-family:var(--inid-font,inherit);color:var(--inid-ink);box-sizing:border-box}
 .inid *{box-sizing:border-box}
-.inid-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:0 16px;border-radius:calc(var(--inid-radius) - 2px);border:1px solid var(--inid-ink);background:var(--inid-ink);color:#fff;font:600 14px/1 var(--inid-font,inherit);cursor:pointer;text-decoration:none}
+.inid-btn{display:inline-flex;align-items:center;justify-content:center;gap:9px;min-height:40px;padding:0 16px;border-radius:calc(var(--inid-radius) - 2px);border:1px solid var(--inid-primary,var(--inid-ink));background:var(--inid-primary,var(--inid-ink));color:var(--inid-primary-ink,#fff);font:600 14px/1 var(--inid-font,inherit);cursor:pointer;text-decoration:none}
 .inid-btn:hover{opacity:.9}.inid-btn:focus-visible,.inid-avatar-btn:focus-visible,.inid-menu-item:focus-visible{outline:2px solid var(--inid-ink);outline-offset:2px}
 .inid-btn i{width:9px;height:9px;border-radius:2px;background:var(--inid-accent);flex:none}
 .inid-btn.inid-wide{width:100%;min-height:44px;font-size:15px}
@@ -162,6 +244,8 @@ const CSS = `
 .inid-dialog form{margin:0}
 .inid-card .inid-foot{margin:18px 0 0;padding-top:14px;border-top:1px solid var(--inid-line);font-size:12px;text-align:center}
 .inid-mark{display:block;width:32px;height:32px}
+.inid-logo{display:block;max-height:36px;max-width:200px;width:auto;height:auto}
+@media (prefers-color-scheme:dark){.inid-auto{--inid-bg:#111113;--inid-ink:#f5f5f7;--inid-muted:#a1a1a6;--inid-line:#3a3a3c;--inid-hover:#1c1c1e;--inid-primary:#c6ff3d;--inid-primary-ink:#111113}}
 .inid-user{position:relative;display:inline-block}
 .inid-avatar-btn{display:inline-flex;align-items:center;gap:8px;padding:2px;border:0;background:none;border-radius:999px;cursor:pointer;font:inherit;color:inherit}
 .inid-avatar{display:grid;place-items:center;width:32px;height:32px;border-radius:999px;background:var(--inid-ink);color:#fff;font:600 13px/1 var(--inid-font,inherit)}
@@ -194,9 +278,11 @@ export interface InIDProviderProps {
   // Where the app's InID routes are
   apiPath?: string;
   locale?: Locale;
+  // The app's look for every component here (each one's appearance wins over it)
+  appearance?: Appearance;
 }
 
-export function InIDProvider({ children, user: given, apiPath = "/api/inid", locale = "es" }: InIDProviderProps) {
+export function InIDProvider({ children, user: given, apiPath = "/api/inid", locale = "es", appearance = undefined }: InIDProviderProps) {
   const [state, setState] = useState<{ isLoaded: boolean; user: InIDUser | null; accountUrl: string }>({
     isLoaded: given !== undefined,
     user: given ?? null,
@@ -216,6 +302,9 @@ export function InIDProvider({ children, user: given, apiPath = "/api/inid", loc
     if (given !== undefined) setState((s) => ({ ...s, isLoaded: true, user: given }));
     else void reload();
   }, [given, reload]);
+  // By value: an object written inline in the page is a new one at every render
+  const lookKey = JSON.stringify(appearance ?? null);
+  const shared = useMemo<Appearance | null>(() => JSON.parse(lookKey), [lookKey]);
   const value = useMemo<InIDState>(
     () => ({
       ...state,
@@ -223,6 +312,7 @@ export function InIDProvider({ children, user: given, apiPath = "/api/inid", loc
       apiPath,
       locale,
       t: TEXTS[locale] ?? TEXTS.es,
+      appearance: shared,
       reload,
       signIn: (returnTo, entrance) => {
         const back = returnTo ?? `${location.pathname}${location.search}`;
@@ -234,7 +324,7 @@ export function InIDProvider({ children, user: given, apiPath = "/api/inid", loc
         location.assign(returnTo);
       },
     }),
-    [state, apiPath, locale, reload]
+    [state, apiPath, locale, reload, shared]
   );
   return h(InIDContext.Provider, { value }, h("style", { "data-inid": "" }, CSS), children);
 }
@@ -296,8 +386,13 @@ export function SignOutButton({ children, returnTo, className }: { children?: Re
 // It's InID's page in a frame, so passkeys, codes and InID's cookies never touch the app.
 // redirect: a single button to InID's page instead. entrance: a door of the app with its own
 // rules and role ("team": only the company's people), made in the InID panel.
-export function SignIn({ appName, returnTo, className, redirect = false, entrance }: { appName?: string; returnTo?: string; className?: string; redirect?: boolean; entrance?: string }) {
-  const { isSignedIn, user, signIn, apiPath, locale, t } = useInID("<SignIn>");
+// appearance: the app's look for this card, over the one set in InID's panel (Apariencia);
+// the card takes the panel's look too (its logo and name) once InID's frame tells it.
+export function SignIn({ appName, returnTo, className, redirect = false, entrance, appearance }: { appName?: string; returnTo?: string; className?: string; redirect?: boolean; entrance?: string; appearance?: Appearance }) {
+  const { isSignedIn, user, signIn, apiPath, locale, t, appearance: shared } = useInID("<SignIn>");
+  const look = merge(shared, appearance);
+  const lookParam = appearanceParam(look);
+  const [fromInID, setFromInID] = useState<FrameBrand | null>(null);
   const frame = useRef<HTMLIFrameElement>(null);
   const [src, setSrc] = useState<string | null>(null);
   const [height, setHeight] = useState(280);
@@ -317,19 +412,27 @@ export function SignIn({ appName, returnTo, className, redirect = false, entranc
       return;
     }
     const page = `${here.pathname}${here.search}`;
-    setSrc((chosen.current = `${apiPath}/signin?${new URLSearchParams({ display: "embed", return_to: returnTo ?? page, page, ui_locales: locale, ...(entrance && { entrance }) })}`));
-  }, [redirect, isSignedIn, returnTo, apiPath, locale, entrance]);
-  // The form says how tall it is
+    setSrc((chosen.current = `${apiPath}/signin?${new URLSearchParams({ display: "embed", return_to: returnTo ?? page, page, ui_locales: locale, ...(entrance && { entrance }), ...(lookParam && { appearance: lookParam }) })}`));
+  }, [redirect, isSignedIn, returnTo, apiPath, locale, entrance, lookParam]);
+  // The form says how tall it is, and the app's look InID has for it
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
-      if (e.source !== frame.current?.contentWindow || e.data?.type !== "inid:height") return;
+      if (e.source !== frame.current?.contentWindow) return;
+      const brand = readFrameBrand(e.data, e.origin);
+      if (brand) return setFromInID(brand);
+      if (e.data?.type !== "inid:height") return;
       const next = Number(e.data.height);
       if (next > 0 && next < 4000) setHeight(Math.ceil(next));
     };
     addEventListener("message", onMessage);
     return () => removeEventListener("message", onMessage);
   }, []);
-  const title = appName ? fill(t.title, { app: appName }) : t.titlePlain;
+  const name = appName || fromInID?.name;
+  const title = name ? fill(t.title, { app: name }) : t.titlePlain;
+  // The theme the code asked for wins over the panel's (InID's frame already says the result)
+  const theme = look?.theme ?? fromInID?.theme;
+  const style = cardVars(look, fromInID?.vars) as Record<string, string>;
+  const top = fromInID?.logo ? h("img", { className: "inid-logo", src: fromInID.logo, alt: name || "" }) : h(Mark);
   const body = isSignedIn
     ? h("p", null, fill(t.signedInAs, { name: user?.name || user?.email || "" }))
     : redirect
@@ -337,7 +440,7 @@ export function SignIn({ appName, returnTo, className, redirect = false, entranc
       : src
         ? h("iframe", { ref: frame, src, title, className: "inid-frame", style: { height }, scrolling: "no", allow: "publickey-credentials-get *; publickey-credentials-create *" })
         : h("div", { className: "inid-frame", style: { height } });
-  return h("section", { className: `inid inid-card${className ? ` ${className}` : ""}`, "aria-label": title }, h(Mark), h("h2", null, title), body, h("p", { className: "inid-foot" }, t.secured));
+  return h("section", { className: `inid inid-card${theme === "auto" ? " inid-auto" : ""}${className ? ` ${className}` : ""}`, style, "aria-label": title }, top, h("h2", null, title), body, h("p", { className: "inid-foot" }, t.secured));
 }
 
 // ---------- the person's sessions ----------
@@ -388,8 +491,12 @@ export function UserSessions() {
 // Their account (InID's own page, in a frame the app can't read: their data, passkeys, the
 // apps they authorized; changing data asks them for a code or a passkey) and their sessions
 // at this app. What they change reaches the app with its next session (or user.updated).
-export function UserProfile({ className }: { className?: string }) {
-  const { isSignedIn, accountUrl, reload, t } = useInID("<UserProfile>");
+// appearance: as <SignIn />'s; the frame (Mi InID for this app) takes the panel's look and this
+export function UserProfile({ className, appearance }: { className?: string; appearance?: Appearance }) {
+  const { isSignedIn, accountUrl, reload, t, appearance: shared } = useInID("<UserProfile>");
+  const look = merge(shared, appearance);
+  const lookParam = appearanceParam(look);
+  const src = lookParam ? `${accountUrl}${accountUrl.includes("?") ? "&" : "?"}${new URLSearchParams({ appearance: lookParam })}` : accountUrl;
   const [tab, setTab] = useState<"account" | "sessions">("account");
   const frame = useRef<HTMLIFrameElement>(null);
   const [height, setHeight] = useState(560);
@@ -412,10 +519,10 @@ export function UserProfile({ className }: { className?: string }) {
   const tabButton = (key: "account" | "sessions", label: string) => h("button", { key, type: "button", role: "tab", "aria-selected": tab === key, className: "inid-tab", onClick: () => setTab(key) }, label);
   return h(
     "section",
-    { className: `inid inid-card inid-profile${className ? ` ${className}` : ""}`, "aria-label": t.profile },
+    { className: `inid inid-card inid-profile${look?.theme === "auto" ? " inid-auto" : ""}${className ? ` ${className}` : ""}`, style: cardVars(look) as Record<string, string>, "aria-label": t.profile },
     h("div", { className: "inid-tabs", role: "tablist" }, tabButton("account", t.profile), tabButton("sessions", t.sessions)),
     tab === "account"
-      ? [h("p", { key: "lead", className: "inid-muted" }, t.profileLead), h("iframe", { key: "frame", ref: frame, src: accountUrl, title: t.profile, className: "inid-frame", style: { height }, scrolling: "no", allow: "publickey-credentials-get *; publickey-credentials-create *" })]
+      ? [h("p", { key: "lead", className: "inid-muted" }, t.profileLead), h("iframe", { key: "frame", ref: frame, src, title: t.profile, className: "inid-frame", style: { height }, scrolling: "no", allow: "publickey-credentials-get *; publickey-credentials-create *" })]
       : [h("p", { key: "lead", className: "inid-muted" }, t.sessionsLead), h(UserSessions, { key: "list" })]
   );
 }

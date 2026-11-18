@@ -71,6 +71,51 @@ describe("<inid-sign-in>", () => {
     expect(element.shadowRoot!.querySelector("iframe")).toBe(frame);
   });
 
+  it("appearance: the attribute and the CSS properties on the element go to InID's frame, only what InID takes; the card wears them too", () => {
+    serve(null);
+    const style = document.createElement("style");
+    style.textContent = "inid-sign-in { --inid-primary: #7C3AED; --inid-radius: 8px; --inid-bg: url(x) }";
+    document.head.append(style);
+    try {
+      const element = mount(`<inid-sign-in appearance='{"theme":"dark","variables":{"fontFamily":"serif","colorBackground":"red;}","borderRadius":"small"},"css":"body{}"}'></inid-sign-in>`);
+      const look = JSON.parse(frameSrc(element).searchParams.get("appearance")!);
+      // The attribute wins over the CSS property (the corner); what isn't a known value is gone
+      expect(look).toEqual({ theme: "dark", variables: { colorPrimary: "#7C3AED", borderRadius: "small", fontFamily: "serif" } });
+      const card = element.shadowRoot!.querySelector<HTMLElement>(".inid-card")!;
+      expect(card.style.getPropertyValue("--inid-primary")).toBe("#7c3aed");
+      expect(card.style.getPropertyValue("--inid-primary-ink")).toBe("#ffffff");
+      expect(card.style.getPropertyValue("--inid-radius")).toBe("6px");
+      expect(card.style.getPropertyValue("--inid-bg")).toBe("#111113");
+    } finally {
+      style.remove();
+    }
+    expect(frameSrc(mount(`<inid-sign-in appearance="not json"></inid-sign-in>`)).searchParams.has("appearance")).toBe(false);
+  });
+
+  it("takes the app's logo, name and colors from its own frame only, without starting the frame over", () => {
+    serve(null);
+    const element = mount(`<inid-sign-in></inid-sign-in>`);
+    const frame = element.shadowRoot!.querySelector("iframe")!;
+    const own = {} as Window;
+    Object.defineProperty(frame, "contentWindow", { value: own });
+    const send = (data: unknown, source: Window | null, origin = "https://id.inid.co") => window.dispatchEvent(new MessageEvent("message", { data, source, origin }));
+    const brand = { type: "inid:brand", name: "Acme", logo: "https://id.inid.co/brand/acme/logo.0123456789abcdef0123456789abcdef.png", theme: "light", common: { "--inid-primary": "#16a34a", "--evil": "x", "--inid-radius": "1px;}body{" }, light: { "--inid-bg": "#fafafa" } };
+    send(brand, null);
+    expect(element.shadowRoot!.querySelector("h2")!.textContent).toBe("Entra");
+    send(brand, own);
+    const card = element.shadowRoot!.querySelector<HTMLElement>(".inid-card")!;
+    expect(element.shadowRoot!.querySelector("h2")!.textContent).toBe("Entra a Acme");
+    expect(element.shadowRoot!.querySelector<HTMLImageElement>("img.inid-logo")!.getAttribute("src")).toBe(brand.logo);
+    expect([card.style.getPropertyValue("--inid-primary"), card.style.getPropertyValue("--inid-bg"), card.style.getPropertyValue("--inid-radius"), card.style.getPropertyValue("--evil")]).toEqual(["#16a34a", "#fafafa", "", ""]);
+    expect(element.shadowRoot!.querySelector("iframe")).toBe(frame);
+    // A logo from anywhere but the frame's own origin isn't shown
+    const other = mount(`<inid-sign-in></inid-sign-in>`);
+    const otherFrame = other.shadowRoot!.querySelector("iframe")!;
+    Object.defineProperty(otherFrame, "contentWindow", { value: own });
+    send({ ...brand, logo: "https://evil.example/x.png" }, own);
+    expect(other.shadowRoot!.querySelector("img")).toBeNull();
+  });
+
   it("uses return-to and the configured locale", () => {
     serve(null);
     const src = frameSrc(mount(`<inid-sign-in return-to="/welcome"></inid-sign-in>`));
@@ -210,6 +255,19 @@ describe("signing in and out", () => {
     expect(element.shadowRoot!.querySelector("slot")!.textContent).toBe("Continuar com InID");
     element.shadowRoot!.querySelector("button")!.click();
     expect(go).toHaveBeenCalledWith("/auth/signin?return_to=%2Fx&ui_locales=pt");
+  });
+});
+
+describe("<inid-user-profile>", () => {
+  beforeEach(() => void vi.spyOn(console, "error").mockImplementation(() => {}));
+  it("frames the person's InID account for this app, with the app's look from its attribute", async () => {
+    serve(ana);
+    const element = mount(`<inid-user-profile appearance='{"variables":{"colorPrimary":"#0f766e"}}'></inid-user-profile>`);
+    await settle();
+    const src = new URL(element.shadowRoot!.querySelector("iframe")!.getAttribute("src")!);
+    expect(src.origin + src.pathname).toBe("https://id.example/account");
+    expect(JSON.parse(src.searchParams.get("appearance")!)).toEqual({ variables: { colorPrimary: "#0f766e" } });
+    expect(element.shadowRoot!.querySelector<HTMLElement>(".inid-card")!.style.getPropertyValue("--inid-primary")).toBe("#0f766e");
   });
 });
 
